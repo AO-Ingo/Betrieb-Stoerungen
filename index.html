@@ -14,26 +14,33 @@ header h1 { font-size: 18px; font-weight: 600; }
 .btn-primary:hover { background: #1d4ed8; }
 .btn-secondary { background: #fff; color: #555; border: 1px solid #ddd; }
 .btn-secondary:hover { background: #f5f5f5; }
-.btn-danger { background: #fff; color: #dc2626; border: 1px solid #fca5a5; font-size: 12px; padding: 5px 10px; }
+.btn-sm { font-size: 12px; padding: 5px 10px; }
+.btn-danger { background: #fff; color: #dc2626; border: 1px solid #fca5a5; }
 .btn-danger:hover { background: #fef2f2; }
-.btn-success { background: #fff; color: #16a34a; border: 1px solid #86efac; font-size: 12px; padding: 5px 10px; }
+.btn-success { background: #fff; color: #16a34a; border: 1px solid #86efac; }
 .btn-success:hover { background: #f0fdf4; }
+.btn-green { background: #16a34a; color: #fff; }
+.btn-green:hover { background: #15803d; }
+.btn-red { background: #dc2626; color: #fff; }
+.btn-red:hover { background: #b91c1c; }
 main { max-width: 720px; margin: 0 auto; padding: 24px 16px; }
 .tabs { display: flex; gap: 3px; background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 4px; margin-bottom: 16px; flex-wrap: wrap; }
-.tab { padding: 7px 14px; border-radius: 7px; border: none; cursor: pointer; font-size: 13px; font-weight: 500; background: none; color: #555; white-space: nowrap; }
+.tab { padding: 7px 12px; border-radius: 7px; border: none; cursor: pointer; font-size: 12px; font-weight: 500; background: none; color: #555; white-space: nowrap; }
 .tab.active-offline { background: #f97316; color: #fff; }
 .tab.active-stoerung { background: #ef4444; color: #fff; }
+.tab.active-erl-offline { background: #16a34a; color: #fff; }
+.tab.active-erl-stoerung { background: #15803d; color: #fff; }
 .tab.active-irr-offline { background: #9ca3af; color: #fff; }
 .tab.active-irr-stoerung { background: #6b7280; color: #fff; }
 .search-bar { display: flex; gap: 8px; margin-bottom: 16px; }
 .search-bar input { flex: 1; padding: 8px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
 .card { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 14px; margin-bottom: 8px; }
-.card.irrelevant { border-color: #e5e7eb; opacity: 0.85; }
 .badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; }
 .badge-offline { background: #fff7ed; color: #c2410c; }
 .badge-stoerung { background: #fef2f2; color: #b91c1c; }
 .badge-ticket { background: #f5f3ff; color: #6d28d9; }
 .badge-irr { background: #f3f4f6; color: #6b7280; }
+.badge-erl { background: #f0fdf4; color: #166534; }
 .card-name { font-weight: 600; margin-top: 6px; font-size: 15px; }
 .card-location { font-size: 13px; color: #666; margin-top: 2px; }
 .card-id { font-size: 11px; color: #aaa; font-family: monospace; margin-top: 4px; }
@@ -41,16 +48,22 @@ main { max-width: 720px; margin: 0 auto; padding: 24px 16px; }
 .evse-tag { background: #f3f4f6; color: #444; font-size: 11px; font-family: monospace; padding: 2px 8px; border-radius: 4px; }
 .card-details { margin-top: 12px; border-top: 1px solid #f0f0f0; padding-top: 10px; display: none; }
 .card-details.open { display: block; }
-.detail-label { font-size: 11px; color: #999; margin-bottom: 2px; }
-.detail-value { font-size: 13px; margin-bottom: 8px; }
+.detail-label { font-size: 11px; color: #999; margin-bottom: 2px; margin-top: 6px; }
+.detail-value { font-size: 13px; }
 .edit-form { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
 .edit-form input, .edit-form textarea, .edit-form select { width: 100%; padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; }
 .edit-form textarea { resize: none; height: 60px; }
 .edit-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .toggle-btn { background: none; border: none; cursor: pointer; color: #999; font-size: 18px; padding: 0 4px; }
 .empty { text-align: center; padding: 60px 0; color: #aaa; }
-.irr-grund-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px 10px; margin-top: 8px; font-size: 12px; color: #6b7280; }
-/* Modal */
+.info-box { border-radius: 6px; padding: 8px 10px; margin-top: 8px; font-size: 12px; }
+.info-box-green { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+.info-box-gray { background: #f9fafb; color: #6b7280; border: 1px solid #e5e7eb; }
+.popup-box { display: none; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin-top: 10px; }
+.popup-box.open { display: block; }
+.popup-box input, .popup-box select, .popup-box textarea { width: 100%; padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; margin-bottom: 8px; }
+.popup-box textarea { resize: none; height: 70px; }
+.popup-actions { display: flex; gap: 6px; }
 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; padding: 16px; }
 .modal-overlay.open { display: flex; }
 .modal { background: #fff; border-radius: 12px; width: 100%; max-width: 680px; max-height: 90vh; display: flex; flex-direction: column; }
@@ -71,11 +84,6 @@ textarea.raw { width: 100%; height: 220px; font-family: monospace; font-size: 12
 .result-dup { background: #f9fafb; color: #6b7280; }
 .error-box { background: #fef2f2; color: #b91c1c; padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-top: 8px; }
 .hint { font-size: 13px; color: #666; margin-bottom: 12px; }
-/* Irrelevant popup */
-.irr-popup { display: none; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin-top: 10px; }
-.irr-popup.open { display: block; }
-.irr-popup select, .irr-popup input { width: 100%; padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; margin-bottom: 8px; }
-.irr-popup-actions { display: flex; gap: 6px; }
 </style>
 </head>
 <body>
@@ -84,11 +92,13 @@ textarea.raw { width: 100%; height: 220px; font-family: monospace; font-size: 12
   <button class="btn btn-primary" onclick="openImport()">↑ Daten importieren</button>
 </header>
 <main>
-  <div class="tabs" id="tabs">
+  <div class="tabs">
     <button class="tab active-offline" id="tab-offline" onclick="setTab('offline')">⚡ Offline <span id="cnt-offline"></span></button>
     <button class="tab" id="tab-stoerung" onclick="setTab('stoerung')">⚠ Störung <span id="cnt-stoerung"></span></button>
-    <button class="tab" id="tab-irr-offline" onclick="setTab('irr-offline')">⚡ Offline irrelevant <span id="cnt-irr-offline"></span></button>
-    <button class="tab" id="tab-irr-stoerung" onclick="setTab('irr-stoerung')">⚠ Störung irrelevant <span id="cnt-irr-stoerung"></span></button>
+    <button class="tab" id="tab-erl-offline" onclick="setTab('erl-offline')">✓ Offline erledigt <span id="cnt-erl-offline"></span></button>
+    <button class="tab" id="tab-erl-stoerung" onclick="setTab('erl-stoerung')">✓ Störung erledigt <span id="cnt-erl-stoerung"></span></button>
+    <button class="tab" id="tab-irr-offline" onclick="setTab('irr-offline')">○ Offline irrelevant <span id="cnt-irr-offline"></span></button>
+    <button class="tab" id="tab-irr-stoerung" onclick="setTab('irr-stoerung')">○ Störung irrelevant <span id="cnt-irr-stoerung"></span></button>
   </div>
   <div class="search-bar">
     <input type="text" id="search" placeholder="Suche nach Kunde, Station-ID, EVSE-ID…" oninput="renderList()">
@@ -111,14 +121,13 @@ textarea.raw { width: 100%; height: 220px; font-family: monospace; font-size: 12
 <script>
 const SB_URL = 'https://wqnadjsuhaqqbmlagqgv.supabase.co'
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxbmFkanN1aGFxcWJtbGFncWd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2OTc4MDMsImV4cCI6MjA5ODI3MzgwM30.5gB9Uwuwrw2mlp3b2NAI8Lab7Sj_dB83uC-A7sSs_UI'
-const GRUENDE = ['Keine Betreuung', 'Veraltet', 'Warten auf Kunden', 'Noch nicht in Betrieb', 'Anderer Grund']
+const GRUENDE = ['Keine Betreuung','Veraltet','Warten auf Kunden','Noch nicht in Betrieb','Anderer Grund']
 
 let tab = 'offline', stationen = [], parsed = []
-
 const H = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' }
 
 async function sb(path, opts = {}) {
-  const r = await fetch(SB_URL + '/rest/v1/' + path, { ...opts, headers: { ...H, 'Prefer': opts.prefer || 'return=representation', ...(opts.headers||{}) } })
+  const r = await fetch(SB_URL + '/rest/v1/' + path, { ...opts, headers: { ...H, 'Prefer': opts.prefer||'return=representation', ...(opts.headers||{}) } })
   const t = await r.text()
   if (!r.ok) throw new Error(t)
   return t ? JSON.parse(t) : null
@@ -127,13 +136,14 @@ async function sb(path, opts = {}) {
 async function loadStationen() {
   document.getElementById('list').innerHTML = '<p style="color:#999;padding:20px">Lade…</p>'
   try {
-    let query
-    if (tab === 'offline') query = 'stationen?meldungstyp=eq.offline&irrelevant=eq.false&select=*,ladepunkte(*)&order=erstellt_am.desc'
-    else if (tab === 'stoerung') query = 'stationen?meldungstyp=eq.stoerung&irrelevant=eq.false&select=*,ladepunkte(*)&order=erstellt_am.desc'
-    else if (tab === 'irr-offline') query = 'stationen?meldungstyp=eq.offline&irrelevant=eq.true&select=*,ladepunkte(*)&order=erstellt_am.desc'
-    else query = 'stationen?meldungstyp=eq.stoerung&irrelevant=eq.true&select=*,ladepunkte(*)&order=erstellt_am.desc'
-
-    stationen = await sb(query) || []
+    let q
+    if (tab === 'offline')       q = 'stationen?meldungstyp=eq.offline&irrelevant=eq.false&erledigt=eq.false&select=*,ladepunkte(*)&order=erstellt_am.desc'
+    else if (tab === 'stoerung') q = 'stationen?meldungstyp=eq.stoerung&irrelevant=eq.false&erledigt=eq.false&select=*,ladepunkte(*)&order=erstellt_am.desc'
+    else if (tab === 'erl-offline')   q = 'stationen?meldungstyp=eq.offline&erledigt=eq.true&select=*,ladepunkte(*)&order=erstellt_am.desc'
+    else if (tab === 'erl-stoerung')  q = 'stationen?meldungstyp=eq.stoerung&erledigt=eq.true&select=*,ladepunkte(*)&order=erstellt_am.desc'
+    else if (tab === 'irr-offline')   q = 'stationen?meldungstyp=eq.offline&irrelevant=eq.true&erledigt=eq.false&select=*,ladepunkte(*)&order=erstellt_am.desc'
+    else                              q = 'stationen?meldungstyp=eq.stoerung&irrelevant=eq.true&erledigt=eq.false&select=*,ladepunkte(*)&order=erstellt_am.desc'
+    stationen = await sb(q) || []
     await updateCounts()
     renderList()
   } catch(e) {
@@ -143,19 +153,22 @@ async function loadStationen() {
 
 async function updateCounts() {
   try {
-    const all = await sb('stationen?select=id,meldungstyp,irrelevant') || []
-    document.getElementById('cnt-offline').textContent = '(' + all.filter(s=>s.meldungstyp==='offline'&&!s.irrelevant).length + ')'
-    document.getElementById('cnt-stoerung').textContent = '(' + all.filter(s=>s.meldungstyp==='stoerung'&&!s.irrelevant).length + ')'
-    document.getElementById('cnt-irr-offline').textContent = '(' + all.filter(s=>s.meldungstyp==='offline'&&s.irrelevant).length + ')'
-    document.getElementById('cnt-irr-stoerung').textContent = '(' + all.filter(s=>s.meldungstyp==='stoerung'&&s.irrelevant).length + ')'
+    const all = await sb('stationen?select=id,meldungstyp,irrelevant,erledigt') || []
+    document.getElementById('cnt-offline').textContent      = '('+all.filter(s=>s.meldungstyp==='offline'&&!s.irrelevant&&!s.erledigt).length+')'
+    document.getElementById('cnt-stoerung').textContent     = '('+all.filter(s=>s.meldungstyp==='stoerung'&&!s.irrelevant&&!s.erledigt).length+')'
+    document.getElementById('cnt-erl-offline').textContent  = '('+all.filter(s=>s.meldungstyp==='offline'&&s.erledigt).length+')'
+    document.getElementById('cnt-erl-stoerung').textContent = '('+all.filter(s=>s.meldungstyp==='stoerung'&&s.erledigt).length+')'
+    document.getElementById('cnt-irr-offline').textContent  = '('+all.filter(s=>s.meldungstyp==='offline'&&s.irrelevant&&!s.erledigt).length+')'
+    document.getElementById('cnt-irr-stoerung').textContent = '('+all.filter(s=>s.meldungstyp==='stoerung'&&s.irrelevant&&!s.erledigt).length+')'
   } catch(e) {}
 }
 
+const TAB_CLASSES = { 'offline':'active-offline','stoerung':'active-stoerung','erl-offline':'active-erl-offline','erl-stoerung':'active-erl-stoerung','irr-offline':'active-irr-offline','irr-stoerung':'active-irr-stoerung' }
+
 function setTab(t) {
   tab = t
-  const tabs = { 'offline': 'active-offline', 'stoerung': 'active-stoerung', 'irr-offline': 'active-irr-offline', 'irr-stoerung': 'active-irr-stoerung' }
-  ;['offline','stoerung','irr-offline','irr-stoerung'].forEach(id => {
-    document.getElementById('tab-' + id).className = 'tab' + (id === t ? ' ' + tabs[t] : '')
+  Object.keys(TAB_CLASSES).forEach(id => {
+    document.getElementById('tab-'+id).className = 'tab' + (id===t ? ' '+TAB_CLASSES[t] : '')
   })
   loadStationen()
 }
@@ -168,43 +181,71 @@ function renderList() {
 }
 
 function cardHTML(s) {
+  const id = s.id
   const isIrr = s.irrelevant
-  const b = s.meldungstyp==='offline'
-    ? `<span class="badge ${isIrr?'badge-irr':'badge-offline'}">${isIrr?'⚡':'⚡'} Offline</span>`
-    : `<span class="badge ${isIrr?'badge-irr':'badge-stoerung'}">${isIrr?'⚠':'⚠'} Störung</span>`
+  const isErl = s.erledigt
+  const isAktiv = !isIrr && !isErl
+
+  const badgeClass = isErl ? 'badge-erl' : isIrr ? 'badge-irr' : s.meldungstyp==='offline' ? 'badge-offline' : 'badge-stoerung'
+  const badgeText = s.meldungstyp==='offline' ? '⚡ Offline' : '⚠ Störung'
   const tb = s.zoho_ticket_id ? `<span class="badge badge-ticket">Ticket #${s.zoho_ticket_id}</span>` : ''
   const tags = (s.ladepunkte||[]).map(lp=>`<span class="evse-tag">${lp.evse_id||'–'}</span>`).join('')
-  const tlink = s.zoho_ticket_url ? `<div style="margin-top:8px"><a href="${s.zoho_ticket_url}" target="_blank" style="color:#2563eb;font-size:13px">🔗 Zoho Ticket</a></div>` : ''
   const datum = new Date(s.erstellt_am).toLocaleDateString('de-DE')
-  const id = s.id
-  const irrGrund = s.irrelevant_grund ? `<div class="irr-grund-box">Grund: ${s.irrelevant_grund}</div>` : ''
+  const tlink = s.zoho_ticket_url ? `<div style="margin-top:8px"><a href="${s.zoho_ticket_url}" target="_blank" style="color:#2563eb;font-size:13px">🔗 Zoho Ticket</a></div>` : ''
 
-  const actionBtn = isIrr
-    ? `<button class="btn btn-success" onclick="reaktivieren('${id}')">↩ Reaktivieren</button>`
-    : `<button class="btn btn-danger" onclick="toggleIrrPopup('${id}')">✕ Als irrelevant markieren</button>`
+  const infoBox = isErl && s.loesung
+    ? `<div class="info-box info-box-green">✓ Lösung: ${s.loesung}</div>`
+    : isIrr && s.irrelevant_grund
+    ? `<div class="info-box info-box-gray">Grund: ${s.irrelevant_grund}</div>`
+    : ''
 
-  const irrPopup = isIrr ? '' : `
-    <div class="irr-popup" id="irr-${id}">
-      <select id="irr-grund-${id}">
-        ${GRUENDE.map(g=>`<option>${g}</option>`).join('')}
-      </select>
-      <input type="text" id="irr-notiz-${id}" placeholder="Zusätzliche Notiz (optional)">
-      <div class="irr-popup-actions">
-        <button class="btn btn-danger" onclick="markiereIrrelevant('${id}')">Bestätigen</button>
-        <button class="btn btn-secondary" style="font-size:12px;padding:5px 10px" onclick="toggleIrrPopup('${id}')">Abbrechen</button>
+  // Aktionsbuttons
+  let aktionen = ''
+  if (isAktiv) {
+    aktionen = `
+      <button class="btn btn-success btn-sm" onclick="togglePopup('erl-${id}')">✓ Als erledigt markieren</button>
+      <button class="btn btn-danger btn-sm" onclick="togglePopup('irr-${id}')">✕ Als irrelevant markieren</button>
+      <button class="btn btn-secondary btn-sm" onclick="loeschen('${id}')">🗑 Löschen</button>`
+  } else if (isErl) {
+    aktionen = `<button class="btn btn-secondary btn-sm" onclick="loeschen('${id}')">🗑 Löschen</button>`
+  } else if (isIrr) {
+    aktionen = `
+      <button class="btn btn-success btn-sm" onclick="reaktivieren('${id}')">↩ Reaktivieren</button>
+      <button class="btn btn-secondary btn-sm" onclick="loeschen('${id}')">🗑 Löschen</button>`
+  }
+
+  // Popups
+  const erlPopup = isAktiv ? `
+    <div class="popup-box" id="erl-${id}">
+      <div style="font-weight:500;font-size:13px;margin-bottom:8px">Wie wurde die Störung behoben?</div>
+      <textarea id="erl-txt-${id}" placeholder="Lösung beschreiben…"></textarea>
+      <div class="popup-actions">
+        <button class="btn btn-green btn-sm" onclick="markiereErledigt('${id}')">✓ Bestätigen</button>
+        <button class="btn btn-secondary btn-sm" onclick="togglePopup('erl-${id}')">Abbrechen</button>
       </div>
-    </div>`
+    </div>` : ''
 
-  return `<div class="card${isIrr?' irrelevant':''}">
+  const irrPopup = isAktiv ? `
+    <div class="popup-box" id="irr-${id}">
+      <div style="font-weight:500;font-size:13px;margin-bottom:8px">Grund für Irrelevanz</div>
+      <select id="irr-grund-${id}">${GRUENDE.map(g=>`<option>${g}</option>`).join('')}</select>
+      <input type="text" id="irr-notiz-${id}" placeholder="Zusätzliche Notiz (optional)">
+      <div class="popup-actions">
+        <button class="btn btn-red btn-sm" onclick="markiereIrrelevant('${id}')">Bestätigen</button>
+        <button class="btn btn-secondary btn-sm" onclick="togglePopup('irr-${id}')">Abbrechen</button>
+      </div>
+    </div>` : ''
+
+  return `<div class="card">
     <div style="display:flex;justify-content:space-between;align-items:flex-start">
-      <div style="display:flex;gap:6px;flex-wrap:wrap">${b}${tb}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="badge ${badgeClass}">${badgeText}</span>${tb}</div>
       <button class="toggle-btn" onclick="document.getElementById('d${id}').classList.toggle('open')">▾</button>
     </div>
     <div class="card-name">${s.kundenname||s.bezeichnung||'–'}</div>
     ${s.standort||s.bezeichnung?`<div class="card-location">📍 ${s.standort||s.bezeichnung}</div>`:''}
     <div class="card-id">${s.interne_id}</div>
     <div class="evse-tags">${tags}</div>
-    ${irrGrund}
+    ${infoBox}
     <div class="card-details" id="d${id}">
       <div class="detail-label">Erstellt</div><div class="detail-value">${datum}</div>
       <div class="detail-label">Ladepunkte</div><div class="detail-value">${(s.ladepunkte||[]).length}</div>
@@ -212,42 +253,59 @@ function cardHTML(s) {
       ${s.notizen?`<div class="detail-label">Notizen</div><div class="detail-value">${s.notizen}</div>`:''}
       ${tlink}
       <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn btn-secondary" style="font-size:12px;padding:5px 10px" onclick="document.getElementById('ef${id}').style.display='flex'">✏ Bearbeiten</button>
-        ${actionBtn}
+        ${isAktiv?`<button class="btn btn-secondary btn-sm" onclick="document.getElementById('ef${id}').style.display='flex'">✏ Bearbeiten</button>`:''}
+        ${aktionen}
       </div>
+      ${erlPopup}
       ${irrPopup}
-      <div class="edit-form" id="ef${id}" style="display:none">
+      ${isAktiv?`<div class="edit-form" id="ef${id}" style="display:none">
         <input id="et${id}" placeholder="Zoho Ticket-ID" value="${s.zoho_ticket_id||''}">
         <input id="eu${id}" placeholder="Zoho Ticket-URL" value="${s.zoho_ticket_url||''}">
         <textarea id="en${id}" placeholder="Notizen">${s.notizen||''}</textarea>
         <div class="edit-actions">
-          <button class="btn btn-primary" style="font-size:12px" onclick="save('${id}')">💾 Speichern</button>
-          <button class="btn btn-secondary" style="font-size:12px" onclick="document.getElementById('ef${id}').style.display='none'">Abbrechen</button>
+          <button class="btn btn-primary btn-sm" onclick="save('${id}')">💾 Speichern</button>
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('ef${id}').style.display='none'">Abbrechen</button>
         </div>
-      </div>
+      </div>`:''}
     </div>
   </div>`
 }
 
-function toggleIrrPopup(id) {
-  document.getElementById('irr-' + id).classList.toggle('open')
+function togglePopup(id) {
+  document.getElementById(id).classList.toggle('open')
+}
+
+async function markiereErledigt(id) {
+  const loesung = document.getElementById('erl-txt-'+id).value.trim()
+  try {
+    await sb(`stationen?id=eq.${id}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({ erledigt: true, loesung: loesung||null }) })
+    loadStationen()
+  } catch(e) { alert('Fehler: '+e.message) }
 }
 
 async function markiereIrrelevant(id) {
-  const grund = document.getElementById('irr-grund-' + id).value
-  const notiz = document.getElementById('irr-notiz-' + id).value
-  const grund_text = notiz ? grund + ': ' + notiz : grund
+  const grund = document.getElementById('irr-grund-'+id).value
+  const notiz = document.getElementById('irr-notiz-'+id).value
   try {
-    await sb(`stationen?id=eq.${id}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ irrelevant: true, irrelevant_grund: grund_text }) })
+    await sb(`stationen?id=eq.${id}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({ irrelevant: true, irrelevant_grund: notiz ? grund+': '+notiz : grund }) })
     loadStationen()
-  } catch(e) { alert('Fehler: ' + e.message) }
+  } catch(e) { alert('Fehler: '+e.message) }
 }
 
 async function reaktivieren(id) {
   try {
-    await sb(`stationen?id=eq.${id}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ irrelevant: false, irrelevant_grund: null }) })
+    await sb(`stationen?id=eq.${id}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({ irrelevant: false, irrelevant_grund: null }) })
     loadStationen()
-  } catch(e) { alert('Fehler: ' + e.message) }
+  } catch(e) { alert('Fehler: '+e.message) }
+}
+
+async function loeschen(id) {
+  if (!confirm('Station wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) return
+  try {
+    await sb(`ladepunkte?station_id=eq.${id}`, { method:'DELETE', prefer:'return=minimal' })
+    await sb(`stationen?id=eq.${id}`, { method:'DELETE', prefer:'return=minimal' })
+    loadStationen()
+  } catch(e) { alert('Fehler: '+e.message) }
 }
 
 async function save(id) {
@@ -333,7 +391,8 @@ async function doImport() {
   let neu=0,lp=0,dup=0,fehler=[]
   for (const s of parsed) {
     try {
-      const ex = await sb(`stationen?interne_id=eq.${encodeURIComponent(s.interne_id)}&select=id,meldungstyp`)
+      // Nur gegen aktive + irrelevante prüfen, NICHT gegen erledigte
+      const ex = await sb(`stationen?interne_id=eq.${encodeURIComponent(s.interne_id)}&erledigt=eq.false&select=id,meldungstyp`)
       if (ex&&ex.length) {
         const e=ex[0]
         if (e.meldungstyp==='stoerung'&&s.meldungstyp==='offline') await sb(`stationen?id=eq.${e.id}`,{method:'PATCH',prefer:'return=minimal',body:JSON.stringify({meldungstyp:'offline'})})
@@ -344,6 +403,7 @@ async function doImport() {
         }
         dup++
       } else {
+        // Neu anlegen – auch wenn erledigt existiert
         const ns=await sb('stationen',{method:'POST',body:JSON.stringify({interne_id:s.interne_id,bezeichnung:s.bezeichnung,kundenname:s.kundenname,standort:s.standort,meldungstyp:s.meldungstyp})})
         if (ns&&ns[0]) { const sid=ns[0].id; for (const p of s.ladepunkte) await sb('ladepunkte',{method:'POST',body:JSON.stringify({station_id:sid,evse_id:p.evse_id,prioritaet:p.prioritaet})}) }
         neu++
