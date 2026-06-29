@@ -14,13 +14,23 @@ export default function HomePage() {
   const [laden, setLaden] = useState(false)
   const [importOffen, setImportOffen] = useState(false)
   const [suche, setSuche] = useState('')
+  const [ladeError, setLadeError] = useState('')
 
   const laden_stationen = useCallback(async () => {
     setLaden(true)
+    setLadeError('')
     try {
       const res = await fetch(`/api/stationen?typ=${aktiveTab}`)
-      const data = await res.json()
+      const text = await res.text()
+      if (!text || text.trim() === '') {
+        throw new Error('Keine Antwort vom Server')
+      }
+      const data = JSON.parse(text)
+      if (data.error) throw new Error(data.error)
       setStationen(data.stationen ?? [])
+    } catch (e: any) {
+      setLadeError(e.message)
+      setStationen([])
     } finally {
       setLaden(false)
     }
@@ -43,7 +53,6 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <header className="bg-white border-b sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -61,14 +70,11 @@ export default function HomePage() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-6">
-        {/* Tabs */}
         <div className="flex items-center gap-1 mb-6 bg-white border rounded-xl p-1 w-fit">
           <button
             onClick={() => setAktiveTab('offline')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              aktiveTab === 'offline'
-                ? 'bg-orange-500 text-white'
-                : 'text-gray-600 hover:bg-gray-100'
+              aktiveTab === 'offline' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
             <Zap size={14} />
@@ -82,9 +88,7 @@ export default function HomePage() {
           <button
             onClick={() => setAktiveTab('stoerung')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              aktiveTab === 'stoerung'
-                ? 'bg-red-500 text-white'
-                : 'text-gray-600 hover:bg-gray-100'
+              aktiveTab === 'stoerung' ? 'bg-red-500 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
             <AlertTriangle size={14} />
@@ -97,7 +101,6 @@ export default function HomePage() {
           </button>
         </div>
 
-        {/* Suche & Refresh */}
         <div className="flex gap-3 mb-4">
           <div className="relative flex-1">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -111,13 +114,17 @@ export default function HomePage() {
           <button
             onClick={laden_stationen}
             className="p-2 border rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-50 bg-white"
-            title="Aktualisieren"
           >
             <RefreshCw size={15} className={laden ? 'animate-spin' : ''} />
           </button>
         </div>
 
-        {/* Stationsliste */}
+        {ladeError && (
+          <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg mb-4">
+            Fehler: {ladeError}
+          </div>
+        )}
+
         {laden ? (
           <div className="text-center py-16 text-gray-400">
             <RefreshCw size={24} className="animate-spin mx-auto mb-3" />
@@ -136,11 +143,7 @@ export default function HomePage() {
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
             {gefiltert.map((station) => (
-              <StationCard
-                key={station.id}
-                station={station}
-                onAktualisiert={laden_stationen}
-              />
+              <StationCard key={station.id} station={station} onAktualisiert={laden_stationen} />
             ))}
           </div>
         )}
