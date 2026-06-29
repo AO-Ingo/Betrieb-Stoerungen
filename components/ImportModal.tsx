@@ -33,8 +33,28 @@ export default function ImportModal({ onClose, onImportiert }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rawData: rohdaten }),
       })
-      const data = await res.json()
-      if (data.error) throw new Error(data.error)
+      
+      const text = await res.text()
+      
+      if (!text || text.trim() === '') {
+        throw new Error('Leere Antwort vom Server. Bitte Vercel Environment Variables prüfen.')
+      }
+      
+      let data: any
+      try {
+        data = JSON.parse(text)
+      } catch {
+        throw new Error(`Server-Antwort ist kein JSON: ${text.substring(0, 200)}`)
+      }
+      
+      if (!res.ok || data.error) {
+        throw new Error(data.error || `Server-Fehler ${res.status}`)
+      }
+      
+      if (!data.parsed || data.parsed.length === 0) {
+        throw new Error('Keine Stationen erkannt. Bitte Datenformat prüfen.')
+      }
+      
       setParsed(data.parsed)
       setSchritt('vorschau')
     } catch (e: any) {
@@ -66,7 +86,6 @@ export default function ImportModal({ onClose, onImportiert }: Props) {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-        {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
           <h2 className="text-lg font-semibold text-gray-900">Daten importieren</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
@@ -88,9 +107,9 @@ export default function ImportModal({ onClose, onImportiert }: Props) {
                 className="w-full h-64 font-mono text-xs border rounded-lg p-3 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               {fehler && (
-                <div className="flex items-center gap-2 text-red-600 text-sm">
-                  <AlertCircle size={16} />
-                  {fehler}
+                <div className="flex items-start gap-2 text-red-600 text-sm bg-red-50 p-3 rounded-lg">
+                  <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                  <span>{fehler}</span>
                 </div>
               )}
             </div>
@@ -109,19 +128,16 @@ export default function ImportModal({ onClose, onImportiert }: Props) {
                   {parsed.filter((s) => s.meldungstyp === 'stoerung').length} Störung
                 </span>
               </div>
-
               <div className="space-y-2">
                 {parsed.map((station, i) => (
                   <div key={i} className="border rounded-lg p-3 text-sm">
                     <div className="flex items-center justify-between mb-1">
                       <span className="font-mono text-xs text-gray-500">{station.interne_id}</span>
-                      <span
-                        className={`text-xs px-2 py-0.5 rounded font-medium ${
-                          station.meldungstyp === 'offline'
-                            ? 'bg-orange-100 text-orange-700'
-                            : 'bg-red-100 text-red-700'
-                        }`}
-                      >
+                      <span className={`text-xs px-2 py-0.5 rounded font-medium ${
+                        station.meldungstyp === 'offline'
+                          ? 'bg-orange-100 text-orange-700'
+                          : 'bg-red-100 text-red-700'
+                      }`}>
                         {station.meldungstyp === 'offline' ? 'Offline' : 'Störung'}
                       </span>
                     </div>
@@ -174,7 +190,6 @@ export default function ImportModal({ onClose, onImportiert }: Props) {
           )}
         </div>
 
-        {/* Footer */}
         <div className="p-6 border-t flex justify-end gap-3">
           {schritt === 'eingabe' && (
             <>
