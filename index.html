@@ -34,7 +34,10 @@ main { max-width: 720px; margin: 0 auto; padding: 24px 16px; }
 .tab.active-irr-stoerung { background: #6b7280; color: #fff; }
 .search-bar { display: flex; gap: 8px; margin-bottom: 16px; }
 .search-bar input { flex: 1; padding: 8px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
-.card { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 14px; margin-bottom: 8px; }
+.card { background: #fff; border: 2px solid #e0e0e0; border-radius: 10px; padding: 14px; margin-bottom: 8px; }
+.card.rot { border-color: #ef4444; background: #fff5f5; }
+.card.gelb { border-color: #f59e0b; background: #fffbf0; }
+.card.gruen { border-color: #22c55e; background: #f0fdf4; }
 .badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; }
 .badge-offline { background: #fff7ed; color: #c2410c; }
 .badge-stoerung { background: #fef2f2; color: #b91c1c; }
@@ -175,7 +178,10 @@ function setTab(t) {
 
 function renderList() {
   const q = document.getElementById('search').value.toLowerCase()
-  const f = stationen.filter(s => !q || [s.kundenname,s.interne_id,s.standort,s.bezeichnung].some(v=>(v||'').toLowerCase().includes(q)) || (s.ladepunkte||[]).some(lp=>(lp.evse_id||'').toLowerCase().includes(q)))
+  const farbOrder = { rot: 0, gelb: 1, gruen: 2, '': 3, null: 3, undefined: 3 }
+  const f = stationen
+    .filter(s => !q || [s.kundenname,s.interne_id,s.standort,s.bezeichnung].some(v=>(v||'').toLowerCase().includes(q)) || (s.ladepunkte||[]).some(lp=>(lp.evse_id||'').toLowerCase().includes(q)))
+    .sort((a,b) => (farbOrder[a.prioritaet_farbe] ?? 3) - (farbOrder[b.prioritaet_farbe] ?? 3))
   if (!f.length) { document.getElementById('list').innerHTML = `<div class="empty"><div style="font-size:40px">○</div><div>Keine Einträge</div></div>`; return }
   document.getElementById('list').innerHTML = f.map(cardHTML).join('')
 }
@@ -191,6 +197,7 @@ function cardHTML(s) {
   const tb = s.zoho_ticket_id ? `<span class="badge badge-ticket">Ticket #${s.zoho_ticket_id}</span>` : ''
   const tags = (s.ladepunkte||[]).map(lp=>`<span class="evse-tag">${lp.evse_id||'–'}</span>`).join('')
   const datum = new Date(s.erstellt_am).toLocaleDateString('de-DE')
+  const faelligStr = s.faelligkeit ? new Date(s.faelligkeit+'T00:00:00').toLocaleDateString('de-DE') : null
   const tlink = s.zoho_ticket_url ? `<div style="margin-top:8px"><a href="${s.zoho_ticket_url}" target="_blank" style="color:#2563eb;font-size:13px">🔗 Zoho Ticket</a></div>` : ''
 
   const infoBox = isErl && s.loesung
@@ -236,7 +243,8 @@ function cardHTML(s) {
       </div>
     </div>` : ''
 
-  return `<div class="card">
+  const farbklasse = s.prioritaet_farbe ? ' '+s.prioritaet_farbe : ''
+  return `<div class="card${farbklasse}">
     <div style="display:flex;justify-content:space-between;align-items:flex-start">
       <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="badge ${badgeClass}">${badgeText}</span>${tb}</div>
       <button class="toggle-btn" onclick="document.getElementById('d${id}').classList.toggle('open')">▾</button>
@@ -245,6 +253,7 @@ function cardHTML(s) {
     ${s.standort||s.bezeichnung?`<div class="card-location">📍 ${s.standort||s.bezeichnung}</div>`:''}
     <div class="card-id">${s.interne_id}</div>
     <div class="evse-tags">${tags}</div>
+    ${faelligStr ? `<div style="font-size:12px;color:#666;margin-top:6px">📅 Fällig: ${faelligStr}</div>` : ''}
     ${infoBox}
     <div class="card-details" id="d${id}">
       <div class="detail-label">Erstellt</div><div class="detail-value">${datum}</div>
@@ -261,6 +270,13 @@ function cardHTML(s) {
       ${isAktiv?`<div class="edit-form" id="ef${id}" style="display:none">
         <input id="et${id}" placeholder="Zoho Ticket-ID" value="${s.zoho_ticket_id||''}">
         <input id="eu${id}" placeholder="Zoho Ticket-URL" value="${s.zoho_ticket_url||''}">
+        <input type="date" id="ef-date-${id}" value="${s.faelligkeit||''}">
+        <select id="ef-farbe-${id}">
+          <option value="">Kein Farbcode</option>
+          <option value="gruen" ${s.prioritaet_farbe==='gruen'?'selected':''}>🟢 Grün – kein Handlungsbedarf</option>
+          <option value="gelb" ${s.prioritaet_farbe==='gelb'?'selected':''}>🟡 Gelb – Handlungsbedarf in Kürze</option>
+          <option value="rot" ${s.prioritaet_farbe==='rot'?'selected':''}>🔴 Rot – sofortiger Handlungsbedarf</option>
+        </select>
         <textarea id="en${id}" placeholder="Notizen">${s.notizen||''}</textarea>
         <div class="edit-actions">
           <button class="btn btn-primary btn-sm" onclick="save('${id}')">💾 Speichern</button>
@@ -310,7 +326,7 @@ async function loeschen(id) {
 
 async function save(id) {
   try {
-    await sb(`stationen?id=eq.${id}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({ zoho_ticket_id: document.getElementById('et'+id).value||null, zoho_ticket_url: document.getElementById('eu'+id).value||null, notizen: document.getElementById('en'+id).value||null }) })
+    await sb(`stationen?id=eq.${id}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({ zoho_ticket_id: document.getElementById('et'+id).value||null, zoho_ticket_url: document.getElementById('eu'+id).value||null, notizen: document.getElementById('en'+id).value||null, faelligkeit: document.getElementById('ef-date-'+id).value||null, prioritaet_farbe: document.getElementById('ef-farbe-'+id).value||null }) })
     loadStationen()
   } catch(e) { alert('Fehler: '+e.message) }
 }
