@@ -4,40 +4,37 @@ import Anthropic from '@anthropic-ai/sdk'
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 export async function POST(req: NextRequest) {
-  const { rawData } = await req.json()
+  try {
+    const body = await req.json()
+    const { rawData } = body
 
-  if (!rawData?.trim()) {
-    return NextResponse.json({ error: 'Keine Daten' }, { status: 400 })
-  }
+    if (!rawData?.trim()) {
+      return NextResponse.json({ error: 'Keine Daten' }, { status: 400 })
+    }
 
-  const prompt = `Du bist ein Daten-Parser für Ladestations-Exportdaten.
+    const prompt = `Parse diese Ladestations-Exportdaten in JSON.
 
-Das Datenformat: Die Daten kommen als Mix aus Tabs und Zeilenumbrüchen.
-Jeder Eintrag hat folgende Struktur:
-- Zeile 1 (TAB-separiert): [Station-ID] [TAB] [ID-Großbuchstaben] [TAB] [EVSE-ID] [TAB] [Interne Bezeichnung] [TAB] [Kundenname/Standort]
-- Zeile 2: leer oder Zeilenumbruch
-- Zeile 3: Meldungstyp ("Offline" oder "Störung")
-- Zeile 4: Priorität ("Mittel", "Wichtig", "Fehlerfrei")
-Dann Leerzeile vor dem nächsten Eintrag.
+Format der Rohdaten: Tab-separierte Felder pro Zeile, dann Zeilenumbrüche für Meldungstyp und Priorität:
+Feld 1: Station-ID
+Feld 2: ID Großbuchstaben (ignorieren)
+Feld 3: EVSE-ID (oder "-" = null)
+Feld 4: Interne Bezeichnung
+Feld 5: Kundenname/Standort (oder "-" = null)
+Nächste Zeile: "Offline" oder "Störung"
+Nächste Zeile: Priorität
 
 Regeln:
-1. Gruppiere Einträge mit gleicher Station-ID zu einer Station mit mehreren Ladepunkten
-2. Jeder Eintrag mit eigener EVSE-ID ist ein Ladepunkt
-3. Nimm NUR Einträge mit Meldungstyp "Offline" oder "Störung" auf
-4. Priorität ist KEIN Filter - alle kommen rein unabhängig von Fehlerfrei/Mittel/Wichtig
-5. Wenn Station "Offline" hat → meldungstyp = "offline"
-6. Wenn Station nur "Störung" hat → meldungstyp = "stoerung"
-7. EVSE-ID "-" → null
-8. Spalte 2 (Großbuchstaben) immer ignorieren
-9. Standort = Spalte 5 wenn nicht "-", sonst null
+- Gleiche Station-ID = ein Eintrag mit mehreren Ladepunkten
+- Nur "Offline" und "Störung" aufnehmen
+- "Offline" → meldungstyp "offline", "Störung" → meldungstyp "stoerung"
+- Hat Station Offline-Eintrag → immer "offline" auch wenn andere "Störung" haben
 
-Antworte NUR mit reinem JSON-Array, kein Markdown, keine Erklärung, kein Text davor oder danach:
-[{"interne_id":"...","bezeichnung":"...","kundenname":"...","standort":"...","meldungstyp":"offline","ladepunkte":[{"evse_id":"...","prioritaet":"..."}]}]
+Gib NUR dieses JSON zurück, nichts anderes:
+[{"interne_id":"ID","bezeichnung":"TEXT_ODER_NULL","kundenname":"TEXT_ODER_NULL","standort":"TEXT_ODER_NULL","meldungstyp":"offline","ladepunkte":[{"evse_id":"ID_ODER_NULL","prioritaet":"TEXT"}]}]
 
-Rohdaten:
+Daten:
 ${rawData}`
 
-  try {
     const message = await client.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 4096,
@@ -45,12 +42,22 @@ ${rawData}`
     })
 
     const text = message.content[0].type === 'text' ? message.content[0].text : ''
-    const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
     
-    const parsed = JSON.parse(cleaned)
+    if (!text || text.trim() === '') {
+      return NextResponse.json({ error: 'Leere Antwort von API' }, { status: 500 })
+    }
+
+    // JSON extrahieren - alles vor [ und nach ] entfernen
+    const jsonMatch = text.match(/\[[\s\S]*\]/)
+    if (!jsonMatch) {
+      return NextResponse.json({ error: `Kein JSON gefunden. Antwort: ${text.substring(0, 200)}` }, { status: 500 })
+    }
+
+    const parsed = JSON.parse(jsonMatch[0])
     return NextResponse.json({ parsed })
+
   } catch (e: any) {
-    console.error('Parse error:', e.message)
-    return NextResponse.json({ error: e.message }, { status: 500 })
+    console.error('Parse route error:', e)
+    return NextResponse.json({ error: e.message || 'Unbekannter Fehler' }, { status: 500 })
   }
 }
