@@ -1,30 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { NextResponse } from 'next/server'
 
 export async function GET() {
-  return NextResponse.json({ status: 'ok' })
-}
-
-export async function POST(req: NextRequest) {
   try {
-    const body = await req.json()
-    
-    // Test: eine Station einfügen
-    const { data, error } = await supabase
-      .from('stationen')
-      .insert({
-        interne_id: 'TEST_' + Date.now(),
-        bezeichnung: 'Test',
-        kundenname: 'Test Kunde',
-        standort: null,
-        meldungstyp: 'offline',
-      })
-      .select('id')
-      .single()
-    
-    if (error) return NextResponse.json({ status: 'insert_error', error: error.message, code: error.code })
-    return NextResponse.json({ status: 'insert_ok', id: data.id })
-  } catch (e: any) {
-    return NextResponse.json({ status: 'exception', error: e.message })
+    const { createClient } = await import('@supabase/supabase-js')
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
+    const sb = createClient(url, key)
+    const { data, error } = await sb.from('stationen').select('count').limit(1)
+    if (error) return NextResponse.json({ status: 'error', error: error.message })
+    return NextResponse.json({ status: 'ok', data })
+  } catch(e: any) {
+    return NextResponse.json({ status: 'catch', error: e.message, stack: e.stack?.substring(0,300) })
   }
 }
