@@ -38,3 +38,5 @@ Siehe `supabase-schema.sql`
 - ⚡ Getrennte Listen: Offline / Störung
 - 🔗 Zoho Desk Ticket-Verknüpfung
 - 🔍 Volltext-Suche
+
+<!-- build trigger -->
