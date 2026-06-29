@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Station } from '@/lib/supabase'
-import { ExternalLink, ChevronDown, ChevronUp, Pencil, Save, X } from 'lucide-react'
+import { ExternalLink, ChevronDown, ChevronUp, Pencil, Save, X, MapPin, User } from 'lucide-react'
 
 interface Props {
   station: Station
@@ -35,19 +35,20 @@ export default function StationCard({ station, onAktualisiert }: Props) {
 
   const istOffline = station.meldungstyp === 'offline'
 
+  // Zeige kundenname wenn vorhanden, sonst bezeichnung
+  const hauptname = station.kundenname ?? station.bezeichnung ?? station.interne_id
+  // Standort: bevorzuge standort-Feld, dann bezeichnung wenn kundenname schon gezeigt wird
+  const standortText = station.standort ?? (station.kundenname ? station.bezeichnung : null)
+
   return (
     <div className="bg-white border rounded-xl overflow-hidden hover:shadow-md transition-shadow">
       {/* Kopfzeile */}
       <div className="flex items-start justify-between p-4">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span
-              className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                istOffline
-                  ? 'bg-orange-100 text-orange-700'
-                  : 'bg-red-100 text-red-700'
-              }`}
-            >
+          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+              istOffline ? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700'
+            }`}>
               {istOffline ? 'Offline' : 'Störung'}
             </span>
             {station.zoho_ticket_id && (
@@ -56,12 +57,23 @@ export default function StationCard({ station, onAktualisiert }: Props) {
               </span>
             )}
           </div>
-          <div className="font-semibold text-gray-900 truncate">{station.kundenname ?? '–'}</div>
-          <div className="text-sm text-gray-500 mt-0.5">{station.standort ?? station.bezeichnung ?? '–'}</div>
-          <div className="text-xs font-mono text-gray-400 mt-1">{station.interne_id}</div>
+
+          {/* Kundenname */}
+          <div className="font-semibold text-gray-900 leading-tight">{hauptname}</div>
+
+          {/* Standort */}
+          {standortText && (
+            <div className="flex items-center gap-1 mt-1 text-sm text-gray-500">
+              <MapPin size={12} className="shrink-0" />
+              <span className="truncate">{standortText}</span>
+            </div>
+          )}
+
+          {/* Interne ID */}
+          <div className="text-xs font-mono text-gray-400 mt-1 truncate">{station.interne_id}</div>
         </div>
 
-        <div className="flex items-center gap-1 ml-2">
+        <div className="flex items-center gap-1 ml-2 shrink-0">
           {station.zoho_ticket_url && (
             <a
               href={station.zoho_ticket_url}
@@ -82,17 +94,19 @@ export default function StationCard({ station, onAktualisiert }: Props) {
         </div>
       </div>
 
-      {/* Ladepunkte als Tags */}
-      <div className="px-4 pb-3 flex flex-wrap gap-1">
-        {station.ladepunkte?.map((lp) => (
-          <span key={lp.id} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-mono">
-            {lp.evse_id ?? '–'}
-            {lp.prioritaet && lp.prioritaet !== '–' && (
-              <span className="ml-1 text-gray-400">{lp.prioritaet}</span>
-            )}
-          </span>
-        ))}
-      </div>
+      {/* Ladepunkte */}
+      {station.ladepunkte && station.ladepunkte.length > 0 && (
+        <div className="px-4 pb-3 flex flex-wrap gap-1">
+          {station.ladepunkte.map((lp) => (
+            <span key={lp.id} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-mono">
+              {lp.evse_id ?? '–'}
+              {lp.prioritaet && lp.prioritaet !== '–' && (
+                <span className="ml-1 text-gray-400 font-sans">{lp.prioritaet}</span>
+              )}
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* Aufgeklappter Bereich */}
       {offen && (
@@ -109,6 +123,14 @@ export default function StationCard({ station, onAktualisiert }: Props) {
                   <div className="text-gray-700">
                     {new Date(station.erstellt_am).toLocaleDateString('de-DE')}
                   </div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-400 mb-0.5">Interne Bezeichnung</div>
+                  <div className="text-gray-700 text-xs font-mono">{station.bezeichnung ?? '–'}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-400 mb-0.5">Ladepunkte</div>
+                  <div className="text-gray-700">{station.ladepunkte?.length ?? 0}</div>
                 </div>
               </div>
               {station.notizen && (
