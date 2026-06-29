@@ -72,7 +72,12 @@ export default function ImportModal({ onClose, onImportiert }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ stationen: parsed }),
       })
-      const data = await res.json()
+      const text2 = await res.text()
+      if (!text2 || text2.trim() === '') {
+        throw new Error('Leere Antwort beim Importieren – Supabase Verbindung prüfen')
+      }
+      let data: any
+      try { data = JSON.parse(text2) } catch { throw new Error('Import-Antwort kein JSON: ' + text2.substring(0, 200)) }
       setErgebnis(data)
       setSchritt('ergebnis')
       onImportiert()
