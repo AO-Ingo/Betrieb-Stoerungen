@@ -1,63 +1,120 @@
 import { NextRequest, NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
-
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json()
-    const { rawData } = body
-
+    const { rawData } = await req.json()
     if (!rawData?.trim()) {
       return NextResponse.json({ error: 'Keine Daten' }, { status: 400 })
     }
 
-    const prompt = `Parse diese Ladestations-Exportdaten in JSON.
-
-Format der Rohdaten: Tab-separierte Felder pro Zeile, dann Zeilenumbrüche für Meldungstyp und Priorität:
-Feld 1: Station-ID
-Feld 2: ID Großbuchstaben (ignorieren)
-Feld 3: EVSE-ID (oder "-" = null)
-Feld 4: Interne Bezeichnung
-Feld 5: Kundenname/Standort (oder "-" = null)
-Nächste Zeile: "Offline" oder "Störung"
-Nächste Zeile: Priorität
-
-Regeln:
-- Gleiche Station-ID = ein Eintrag mit mehreren Ladepunkten
-- Nur "Offline" und "Störung" aufnehmen
-- "Offline" → meldungstyp "offline", "Störung" → meldungstyp "stoerung"
-- Hat Station Offline-Eintrag → immer "offline" auch wenn andere "Störung" haben
-
-Gib NUR dieses JSON zurück, nichts anderes:
-[{"interne_id":"ID","bezeichnung":"TEXT_ODER_NULL","kundenname":"TEXT_ODER_NULL","standort":"TEXT_ODER_NULL","meldungstyp":"offline","ladepunkte":[{"evse_id":"ID_ODER_NULL","prioritaet":"TEXT"}]}]
-
-Daten:
-${rawData}`
-
-    const message = await client.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 4096,
-      messages: [{ role: 'user', content: prompt }],
-    })
-
-    const text = message.content[0].type === 'text' ? message.content[0].text : ''
-    
-    if (!text || text.trim() === '') {
-      return NextResponse.json({ error: 'Leere Antwort von API' }, { status: 500 })
-    }
-
-    // JSON extrahieren - alles vor [ und nach ] entfernen
-    const jsonMatch = text.match(/\[[\s\S]*\]/)
-    if (!jsonMatch) {
-      return NextResponse.json({ error: `Kein JSON gefunden. Antwort: ${text.substring(0, 200)}` }, { status: 500 })
-    }
-
-    const parsed = JSON.parse(jsonMatch[0])
+    const parsed = parseRohdaten(rawData)
     return NextResponse.json({ parsed })
-
   } catch (e: any) {
-    console.error('Parse route error:', e)
-    return NextResponse.json({ error: e.message || 'Unbekannter Fehler' }, { status: 500 })
+    return NextResponse.json({ error: e.message }, { status: 500 })
   }
+}
+
+function parseRohdaten(raw: string) {
+  // Zeilen bereinigen
+  const lines = raw.split('\n').map(l => l.trim())
+  
+  const eintraege: Array<{
+    interne_id: string
+    bezeichnung: string | null
+    kundenname: string | null
+    standort: string | null
+    meldungstyp: 'offline' | 'stoerung'
+    evse_id: string | null
+    prioritaet: string | null
+  }> = []
+
+  let i = 0
+  while (i < lines.length) {
+    const line = lines[i]
+    
+    // Überspringe Leerzeilen
+    if (!line) { i++; continue }
+    
+    // Tab-separierte Zeile = Stationszeile
+    if (line.includes('\t')) {
+      const teile = line.split('\t').map(t => t.trim())
+      
+      const interne_id = teile[0] || null
+      // teile[1] = Großbuchstaben-ID → ignorieren
+      const evse_id = teile[2] && teile[2] !== '-' ? teile[2] : null
+      const bezeichnung = teile[3] || null
+      const standort_raw = teile[4] && teile[4] !== '-' ? teile[4] : null
+
+      if (!interne_id) { i++; continue }
+
+      // Nächste Zeilen: Meldungstyp und Priorität
+      let meldungstyp_raw = ''
+      let prioritaet = null
+      let j = i + 1
+      
+      while (j < lines.length && !lines[j].includes('\t')) {
+        const nl = lines[j].trim()
+        if (nl === 'Offline' || nl === 'Störung' || nl === 'Stoerung') {
+          meldungstyp_raw = nl
+        } else if (nl && nl !== '') {
+          prioritaet = nl
+        }
+        j++
+        // Stoppe nach 3 Zeilen
+        if (j > i + 4) break
+      }
+
+      // Nur Offline und Störung aufnehmen
+      if (meldungstyp_raw === 'Offline' || meldungstyp_raw === 'Störung' || meldungstyp_raw === 'Stoerung') {
+        const meldungstyp = meldungstyp_raw === 'Offline' ? 'offline' : 'stoerung'
+        
+        eintraege.push({
+          interne_id,
+          bezeichnung,
+          kundenname: standort_raw,
+          standort: null,
+          meldungstyp,
+          evse_id,
+          prioritaet,
+        })
+      }
+
+      i = j
+      continue
+    }
+    
+    i++
+  }
+
+  // Gruppiere nach Station-ID
+  const stationenMap = new Map<string, any>()
+  
+  for (const eintrag of eintraege) {
+    const existing = stationenMap.get(eintrag.interne_id)
+    
+    if (existing) {
+      // Offline hat Vorrang
+      if (eintrag.meldungstyp === 'offline') {
+        existing.meldungstyp = 'offline'
+      }
+      // Ladepunkt hinzufügen wenn EVSE-ID neu
+      const evseIds = existing.ladepunkte.map((lp: any) => lp.evse_id)
+      if (eintrag.evse_id && !evseIds.includes(eintrag.evse_id)) {
+        existing.ladepunkte.push({ evse_id: eintrag.evse_id, prioritaet: eintrag.prioritaet })
+      } else if (!eintrag.evse_id && existing.ladepunkte.length === 0) {
+        existing.ladepunkte.push({ evse_id: null, prioritaet: eintrag.prioritaet })
+      }
+    } else {
+      stationenMap.set(eintrag.interne_id, {
+        interne_id: eintrag.interne_id,
+        bezeichnung: eintrag.bezeichnung,
+        kundenname: eintrag.kundenname,
+        standort: eintrag.standort,
+        meldungstyp: eintrag.meldungstyp,
+        ladepunkte: [{ evse_id: eintrag.evse_id, prioritaet: eintrag.prioritaet }],
+      })
+    }
+  }
+
+  return Array.from(stationenMap.values())
 }
