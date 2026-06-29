@@ -23,9 +23,9 @@ header h1 { font-size: 18px; font-weight: 600; }
 .btn-green:hover { background: #15803d; }
 .btn-red { background: #dc2626; color: #fff; }
 .btn-red:hover { background: #b91c1c; }
-main { max-width: 720px; margin: 0 auto; padding: 24px 16px; }
-.tabs { display: flex; gap: 3px; background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 4px; margin-bottom: 16px; flex-wrap: wrap; }
-.tab { padding: 7px 12px; border-radius: 7px; border: none; cursor: pointer; font-size: 12px; font-weight: 500; background: none; color: #555; white-space: nowrap; }
+main { max-width: 1200px; margin: 0 auto; padding: 16px 24px; }
+.tabs { display: flex; gap: 2px; background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 3px; margin-bottom: 16px; flex-wrap: nowrap; overflow-x: auto; }
+.tab { padding: 5px 10px; border-radius: 6px; border: none; cursor: pointer; font-size: 11px; font-weight: 500; background: none; color: #555; white-space: nowrap; }
 .tab.active-offline { background: #f97316; color: #fff; }
 .tab.active-stoerung { background: #ef4444; color: #fff; }
 .tab.active-erl-offline { background: #16a34a; color: #fff; }
@@ -34,8 +34,11 @@ main { max-width: 720px; margin: 0 auto; padding: 24px 16px; }
 .tab.active-irr-stoerung { background: #6b7280; color: #fff; }
 .search-bar { display: flex; gap: 8px; margin-bottom: 16px; }
 .search-bar input { flex: 1; padding: 8px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
-.card { background: #fff; border: 2px solid #e0e0e0; border-radius: 10px; padding: 14px; margin-bottom: 8px; }
+.card { background: #fff; border: 2px solid #e0e0e0; border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; }
 .card.rot { border-color: #ef4444; background: #fff5f5; }
+.card-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.card-main { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+.card-meta { font-size: 11px; color: #aaa; font-family: monospace; }
 .card.gelb { border-color: #f59e0b; background: #fffbf0; }
 .card.gruen { border-color: #22c55e; background: #f0fdf4; }
 .badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; }
@@ -192,36 +195,35 @@ function cardHTML(s) {
   const isErl = s.erledigt
   const isAktiv = !isIrr && !isErl
 
+  const farbklasse = s.prioritaet_farbe ? ' '+s.prioritaet_farbe : ''
   const badgeClass = isErl ? 'badge-erl' : isIrr ? 'badge-irr' : s.meldungstyp==='offline' ? 'badge-offline' : 'badge-stoerung'
   const badgeText = s.meldungstyp==='offline' ? '⚡ Offline' : '⚠ Störung'
-  const tb = s.zoho_ticket_id ? `<span class="badge badge-ticket">Ticket #${s.zoho_ticket_id}</span>` : ''
+  const tb = s.zoho_ticket_id ? `<span class="badge badge-ticket">#${s.zoho_ticket_id}</span>` : ''
   const tags = (s.ladepunkte||[]).map(lp=>`<span class="evse-tag">${lp.evse_id||'–'}</span>`).join('')
   const datum = new Date(s.erstellt_am).toLocaleDateString('de-DE')
   const faelligStr = s.faelligkeit ? new Date(s.faelligkeit+'T00:00:00').toLocaleDateString('de-DE') : null
-  const tlink = s.zoho_ticket_url ? `<div style="margin-top:8px"><a href="${s.zoho_ticket_url}" target="_blank" style="color:#2563eb;font-size:13px">🔗 Zoho Ticket</a></div>` : ''
+  const tlink = s.zoho_ticket_url ? `<a href="${s.zoho_ticket_url}" target="_blank" style="color:#2563eb;font-size:13px">🔗 Zoho Ticket</a>` : ''
 
   const infoBox = isErl && s.loesung
-    ? `<div class="info-box info-box-green">✓ Lösung: ${s.loesung}</div>`
+    ? `<div class="info-box info-box-green">✓ ${s.loesung}</div>`
     : isIrr && s.irrelevant_grund
-    ? `<div class="info-box info-box-gray">Grund: ${s.irrelevant_grund}</div>`
+    ? `<div class="info-box info-box-gray">${s.irrelevant_grund}</div>`
     : ''
 
-  // Aktionsbuttons
   let aktionen = ''
   if (isAktiv) {
     aktionen = `
-      <button class="btn btn-success btn-sm" onclick="togglePopup('erl-${id}')">✓ Als erledigt markieren</button>
-      <button class="btn btn-danger btn-sm" onclick="togglePopup('irr-${id}')">✕ Als irrelevant markieren</button>
-      <button class="btn btn-secondary btn-sm" onclick="loeschen('${id}')">🗑 Löschen</button>`
+      <button class="btn btn-success btn-sm" onclick="togglePopup('erl-${id}')">✓ Erledigt</button>
+      <button class="btn btn-danger btn-sm" onclick="togglePopup('irr-${id}')">✕ Irrelevant</button>
+      <button class="btn btn-secondary btn-sm" onclick="loeschen('${id}')">🗑</button>`
   } else if (isErl) {
-    aktionen = `<button class="btn btn-secondary btn-sm" onclick="loeschen('${id}')">🗑 Löschen</button>`
+    aktionen = `<button class="btn btn-secondary btn-sm" onclick="loeschen('${id}')">🗑</button>`
   } else if (isIrr) {
     aktionen = `
       <button class="btn btn-success btn-sm" onclick="reaktivieren('${id}')">↩ Reaktivieren</button>
-      <button class="btn btn-secondary btn-sm" onclick="loeschen('${id}')">🗑 Löschen</button>`
+      <button class="btn btn-secondary btn-sm" onclick="loeschen('${id}')">🗑</button>`
   }
 
-  // Popups
   const erlPopup = isAktiv ? `
     <div class="popup-box" id="erl-${id}">
       <div style="font-weight:500;font-size:13px;margin-bottom:8px">Wie wurde die Störung behoben?</div>
@@ -243,25 +245,32 @@ function cardHTML(s) {
       </div>
     </div>` : ''
 
-  const farbklasse = s.prioritaet_farbe ? ' '+s.prioritaet_farbe : ''
   return `<div class="card${farbklasse}">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start">
-      <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="badge ${badgeClass}">${badgeText}</span>${tb}</div>
-      <button class="toggle-btn" onclick="document.getElementById('d${id}').classList.toggle('open')">▾</button>
+    <div class="card-row">
+      <div class="card-main">
+        <span class="badge ${badgeClass}" style="flex-shrink:0">${badgeText}</span>
+        <span style="font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.kundenname||s.bezeichnung||'–'}</span>
+        ${tb}
+      </div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">
+        ${tags}
+      </div>
+      <button class="toggle-btn" onclick="document.getElementById('d${id}').classList.toggle('open')" style="flex-shrink:0">▾</button>
     </div>
-    <div class="card-name">${s.kundenname||s.bezeichnung||'–'}</div>
-    ${s.standort||s.bezeichnung?`<div class="card-location">📍 ${s.standort||s.bezeichnung}</div>`:''}
-    <div class="card-id">${s.interne_id}</div>
-    <div class="evse-tags">${tags}</div>
-    ${faelligStr ? `<div style="font-size:12px;color:#666;margin-top:6px">📅 Fällig: ${faelligStr}</div>` : ''}
-    ${infoBox}
+    <div style="display:flex;align-items:center;gap:12px;margin-top:3px;flex-wrap:wrap">
+      ${s.standort||s.bezeichnung?`<span style="font-size:12px;color:#888">📍 ${s.standort||s.bezeichnung}</span>`:''}
+      <span class="card-meta">${s.interne_id}</span>
+      ${faelligStr?`<span style="font-size:12px;color:#666">📅 ${faelligStr}</span>`:''}
+      ${infoBox}
+    </div>
     <div class="card-details" id="d${id}">
-      <div class="detail-label">Erstellt</div><div class="detail-value">${datum}</div>
-      <div class="detail-label">Ladepunkte</div><div class="detail-value">${(s.ladepunkte||[]).length}</div>
-      <div class="detail-label">Bezeichnung</div><div class="detail-value" style="font-family:monospace;font-size:12px">${s.bezeichnung||'–'}</div>
-      ${s.notizen?`<div class="detail-label">Notizen</div><div class="detail-value">${s.notizen}</div>`:''}
-      ${tlink}
-      <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+        <div><div class="detail-label">Erstellt</div><div class="detail-value">${datum}</div></div>
+        <div><div class="detail-label">Ladepunkte</div><div class="detail-value">${(s.ladepunkte||[]).length}</div></div>
+        ${s.notizen?`<div><div class="detail-label">Notizen</div><div class="detail-value">${s.notizen}</div></div>`:''}
+        ${tlink?`<div style="margin-top:4px">${tlink}</div>`:''}
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
         ${isAktiv?`<button class="btn btn-secondary btn-sm" onclick="document.getElementById('ef${id}').style.display='flex'">✏ Bearbeiten</button>`:''}
         ${aktionen}
       </div>
@@ -274,7 +283,7 @@ function cardHTML(s) {
         <select id="ef-farbe-${id}">
           <option value="">Kein Farbcode</option>
           <option value="gruen" ${s.prioritaet_farbe==='gruen'?'selected':''}>🟢 Grün – kein Handlungsbedarf</option>
-          <option value="gelb" ${s.prioritaet_farbe==='gelb'?'selected':''}>🟡 Gelb – Handlungsbedarf in Kürze</option>
+          <option value="gelb" ${s.prioritaet_farbe==='gelb'?'selected':''}>🟡 Warten auf Kunden</option>
           <option value="rot" ${s.prioritaet_farbe==='rot'?'selected':''}>🔴 Rot – sofortiger Handlungsbedarf</option>
         </select>
         <textarea id="en${id}" placeholder="Notizen">${s.notizen||''}</textarea>
@@ -286,6 +295,7 @@ function cardHTML(s) {
     </div>
   </div>`
 }
+// OLD_CARDFN_END
 
 function togglePopup(id) {
   document.getElementById(id).classList.toggle('open')
