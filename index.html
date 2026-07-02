@@ -136,14 +136,17 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg3); color: var(--
   border-radius: var(--radius); padding: 10px 14px;
   margin-bottom: 6px; cursor: pointer;
   transition: background 0.08s, box-shadow 0.08s;
-  border-left: 3px solid transparent;
+  border-left: 4px solid transparent;
 }
-.card:hover { background: var(--bg2); box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+.card:hover { box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
 .card.selected { border-left-color: var(--orange); background: var(--orange-bg); }
-.card.rot { border-left-color: #ef4444; }
-.card.gelb { border-left-color: #f59e0b; }
-.card.gruen { border-left-color: #22c55e; }
-.card.rot.selected, .card.gelb.selected, .card.gruen.selected { border-left-color: var(--orange); }
+.card.rot { border-left-color: #ef4444; background: #fff5f5; }
+.card.gelb { border-left-color: #f59e0b; background: #fffbf0; }
+.card.gruen { border-left-color: #22c55e; background: #f0fdf4; }
+.card.rot:hover { background: #ffe8e8; }
+.card.gelb:hover { background: #fff3d0; }
+.card.gruen:hover { background: #e0faf0; }
+.card.rot.selected, .card.gelb.selected, .card.gruen.selected { border-left-color: var(--orange); background: var(--orange-bg); }
 
 .card-row { display: flex; align-items: center; gap: 8px; }
 .card-main { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
@@ -384,7 +387,13 @@ async function sucheAlleTabs() {
         const badgeClass = s.erledigt ? 'badge-erl' : s.irrelevant ? 'badge-irr' : s.meldungstyp==='offline' ? 'badge-offline' : 'badge-stoerung'
         const tags = (s.ladepunkte||[]).map(lp=>`<span class="evse-tag">${lp.evse_id||'–'}</span>`).join('')
         const faelligStr = s.faelligkeit ? new Date(s.faelligkeit+'T00:00:00').toLocaleDateString('de-DE') : null
-        return `<div class="card${farbklasse}" onclick="openDetail('${id}')" id="card-${id}">
+        // Router Symbol
+  const routerSym = s.router_online===true ? '<span title="Router online" style="color:#16a34a;font-size:12px">🟢</span>' : s.router_online===false ? '<span title="Router offline" style="color:#dc2626;font-size:12px">🔴</span>' : ''
+  // Neuester Kommentar
+  const neusterK = (s.kommentare||[]).sort((a,b)=>new Date(b.erstellt_am)-new Date(a.erstellt_am))[0]
+  const kVorschau = neusterK ? `<span style="font-size:11px;color:var(--text2);font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:300px">${neusterK.text}</span>` : ''
+
+  return `<div class="card${farbklasse}" onclick="openDetail('${id}')" id="card-${id}">
           <div class="card-row">
             <div class="card-main">
               <span class="badge ${badgeClass}" style="flex-shrink:0">${tabLabel(s)}</span>
@@ -412,6 +421,31 @@ async function sucheAlleTabs() {
   } catch(e) {
     container.innerHTML = `<div class="error-box">Fehler: ${e.message}</div>`
   }
+}
+
+function editKommentar(kId, stationId) {
+  document.getElementById('k-text-'+kId).style.display = 'none'
+  document.getElementById('k-edit-'+kId).style.display = 'block'
+  document.getElementById('k-input-'+kId).focus()
+}
+
+async function speichereKommentar(kId, stationId) {
+  const text = document.getElementById('k-input-'+kId).value.trim()
+  if (!text) return
+  try {
+    await sb(`kommentare?id=eq.${kId}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({ text }) })
+    await loadStationen()
+    openDetail(stationId)
+  } catch(e) { alert('Fehler: '+e.message) }
+}
+
+async function loescheKommentar(kId, stationId) {
+  if (!confirm('Kommentar löschen?')) return
+  try {
+    await sb(`kommentare?id=eq.${kId}`, { method:'DELETE', prefer:'return=minimal' })
+    await loadStationen()
+    openDetail(stationId)
+  } catch(e) { alert('Fehler: '+e.message) }
 }
 
 async function addKommentar(stationId) {
@@ -553,6 +587,12 @@ function cardHTML(s) {
       </div>
     </div>` : ''
 
+  // Router Symbol
+  const routerSym = s.router_online===true ? '<span title="Router online" style="color:#16a34a;font-size:12px">🟢</span>' : s.router_online===false ? '<span title="Router offline" style="color:#dc2626;font-size:12px">🔴</span>' : ''
+  // Neuester Kommentar
+  const neusterK = (s.kommentare||[]).sort((a,b)=>new Date(b.erstellt_am)-new Date(a.erstellt_am))[0]
+  const kVorschau = neusterK ? `<span style="font-size:11px;color:var(--text2);font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:300px">${neusterK.text}</span>` : ''
+
   return `<div class="card${farbklasse}" onclick="openDetail('${id}')" id="card-${id}">
     <div class="card-row">
       <div class="card-main">
@@ -567,7 +607,9 @@ function cardHTML(s) {
     </div>
     <div style="display:flex;align-items:center;gap:12px;margin-top:3px;flex-wrap:wrap">
       ${s.standort?`<span style="font-size:12px;color:#888">📍 ${s.standort}</span>`:s.bezeichnung?`<span style="font-size:12px;color:#888">${s.bezeichnung}</span>`:''}
-      <span class="card-meta">${s.interne_id}</span>
+      </div>
+      <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;text-align:right;white-space:nowrap">${s.interne_id}</span>
+    </div>
       ${faelligStr?(()=>{
         const heute = new Date(); heute.setHours(0,0,0,0)
         const faellig = new Date(s.faelligkeit+'T00:00:00')
@@ -683,9 +725,22 @@ function openDetail(id) {
         ${(s.kommentare||[]).sort((a,b)=>new Date(b.erstellt_am)-new Date(a.erstellt_am)).map(k=>{
           const dt = new Date(k.erstellt_am)
           const dstr = dt.toLocaleDateString('de-DE') + ' ' + dt.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})
-          return `<div style="border-left:2px solid var(--border2);padding:6px 10px;margin-bottom:8px">
-            <div style="font-size:11px;color:var(--text3);margin-bottom:3px">${dstr}</div>
-            <div style="font-size:13px;color:var(--text)">${k.text}</div>
+          return `<div style="border-left:2px solid var(--border2);padding:6px 10px;margin-bottom:8px" id="k-${k.id}">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+              <span style="font-size:11px;color:var(--text3)">${dstr}</span>
+              <div style="display:flex;gap:4px">
+                <button onclick="editKommentar('${k.id}','${s.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:11px;padding:1px 4px;border-radius:3px" title="Bearbeiten">✏</button>
+                <button onclick="loescheKommentar('${k.id}','${s.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:11px;padding:1px 4px;border-radius:3px" title="Löschen">🗑</button>
+              </div>
+            </div>
+            <div style="font-size:13px;color:var(--text)" id="k-text-${k.id}">${k.text}</div>
+            <div id="k-edit-${k.id}" style="display:none;margin-top:6px">
+              <input id="k-input-${k.id}" value="${k.text}" style="width:100%;padding:4px 8px;border:1px solid var(--border2);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif;background:var(--bg)">
+              <div style="display:flex;gap:4px;margin-top:4px">
+                <button class="btn btn-primary btn-sm" onclick="speichereKommentar('${k.id}','${s.id}')">Speichern</button>
+                <button class="btn btn-secondary btn-sm" onclick="document.getElementById('k-edit-${k.id}').style.display='none';document.getElementById('k-text-${k.id}').style.display=''">Abbrechen</button>
+              </div>
+            </div>
           </div>`
         }).join('') || '<div style="color:var(--text3);font-size:13px">Noch keine Kommentare</div>'}
       </div>
