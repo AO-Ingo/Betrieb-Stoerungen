@@ -641,6 +641,44 @@ function openDetail(id) {
     ${isErl&&s.loesung?`<div class="info-box info-box-green" style="margin-bottom:12px">✓ Lösung: ${s.loesung}</div>`:''}
     ${isIrr&&s.irrelevant_grund?`<div class="info-box info-box-gray" style="margin-bottom:12px">Grund: ${s.irrelevant_grund}</div>`:''}
 
+    <!-- Bearbeiten -->
+    <div id="dp-edit-section" style="display:none;border-top:1px solid var(--border);padding-top:12px;margin-bottom:12px">
+      <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Bearbeiten</div>
+      <div class="edit-form">
+        <div class="detail-label">Dashboardname</div>
+        <input id="ef-kunde-${s.id}" value="${s.kundenname||''}">
+        <div class="detail-label">Standort</div>
+        <input id="ef-standort-${s.id}" value="${s.standort||''}">
+        <div class="detail-label">EVSE-IDs</div>
+        <div id="ef-evse-list-${s.id}">
+          ${(s.ladepunkte||[]).map(lp=>`<div style="display:flex;gap:4px;margin-bottom:4px">
+            <input style="flex:1;padding:4px 8px;border:1px solid var(--border2);border-radius:6px;font-size:12px;font-family:'DM Mono',monospace;background:var(--bg2)" value="${lp.evse_id||''}" data-lpid="${lp.id}" class="evse-input-${s.id}">
+            <button class="btn btn-danger btn-sm" onclick="loescheLP('${lp.id}','${s.id}')">✕</button>
+          </div>`).join('')}
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="addEvseRow('${s.id}')">+ EVSE-ID hinzufügen</button>
+        <div class="detail-label" style="margin-top:6px">Zoho Ticket-ID</div>
+        <input id="ef-tid-${s.id}" value="${s.zoho_ticket_id||''}">
+        <div class="detail-label">Zoho Ticket-URL</div>
+        <input id="ef-turl-${s.id}" value="${s.zoho_ticket_url||''}">
+        <div class="detail-label">Fälligkeitsdatum</div>
+        <input type="date" id="ef-date-${s.id}" value="${s.faelligkeit||''}">
+        <div class="detail-label">Farbcode</div>
+        <select id="ef-farbe-${s.id}">
+          <option value="">Kein Farbcode</option>
+          <option value="gruen" ${s.prioritaet_farbe==='gruen'?'selected':''}>🟢 Grün</option>
+          <option value="gelb" ${s.prioritaet_farbe==='gelb'?'selected':''}>🟡 Warten auf Kunden</option>
+          <option value="rot" ${s.prioritaet_farbe==='rot'?'selected':''}>🔴 Rot</option>
+        </select>
+        <div class="detail-label">Notizen</div>
+        <textarea id="ef-notes-${s.id}">${s.notizen||''}</textarea>
+        <div class="edit-actions">
+          <button class="btn btn-primary btn-sm" onclick="save('${s.id}')">💾 Speichern</button>
+          <button class="btn btn-secondary btn-sm" onclick="toggleEditSection()">Abbrechen</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Kommentare -->
     <div style="border-top:1px solid var(--border);padding-top:12px">
       <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Verlauf & Kommentare</div>
