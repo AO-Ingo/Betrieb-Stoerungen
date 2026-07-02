@@ -203,7 +203,7 @@ async function sucheAlleTabs() {
             <div style="display:flex;gap:4px;flex-wrap:wrap">${tags}</div>
           </div>
           <div style="display:flex;align-items:center;gap:12px;margin-top:3px;flex-wrap:wrap">
-            ${s.standort||s.bezeichnung?`<span style="font-size:12px;color:#888">📍 ${s.standort||s.bezeichnung}</span>`:''}
+            ${s.standort?`<span style="font-size:12px;color:#888">📍 ${s.standort}</span>`:s.bezeichnung?`<span style="font-size:12px;color:#888">${s.bezeichnung}</span>`:''}
             <span style="font-size:11px;color:#aaa;font-family:monospace">${s.interne_id}</span>
             ${faelligStr?`<span style="font-size:12px;color:#666">📅 ${faelligStr}</span>`:''}
           </div>
@@ -334,7 +334,7 @@ function cardHTML(s) {
       <button class="toggle-btn" onclick="document.getElementById('d${id}').classList.toggle('open')" style="flex-shrink:0">▾</button>
     </div>
     <div style="display:flex;align-items:center;gap:12px;margin-top:3px;flex-wrap:wrap">
-      ${s.standort||s.bezeichnung?`<span style="font-size:12px;color:#888">📍 ${s.standort||s.bezeichnung}</span>`:''}
+      ${s.standort?`<span style="font-size:12px;color:#888">📍 ${s.standort}</span>`:s.bezeichnung?`<span style="font-size:12px;color:#888">${s.bezeichnung}</span>`:''}
       <span class="card-meta">${s.interne_id}</span>
       ${faelligStr?`<span style="font-size:12px;color:#666">📅 ${faelligStr}</span>`:''}
       ${infoBox}
@@ -493,7 +493,8 @@ function parse(raw) {
       const id = t[0]; if (!id) { i++; continue }
       const evse = t[2]&&t[2]!=='-'?t[2]:null
       const bez = t[3]&&t[3]!=='-'?t[3]:null
-      const kunde = t[4]&&t[4]!=='-'?t[4]:null
+      const kunde = t[3]&&t[3]!=='-'?t[3]:null
+      const standort = t[4]&&t[4]!=='-'?t[4]:null
       let mel='', prio=null, j=i+1
       while (j<lines.length&&j<i+6) {
         const nl=lines[j].trim()
@@ -503,7 +504,7 @@ function parse(raw) {
         if (nl===''){j++;continue}
         break
       }
-      if (mel) eintraege.push({interne_id:id,bezeichnung:bez,kundenname:kunde,meldungstyp:mel,evse_id:evse,prioritaet:prio})
+      if (mel) eintraege.push({interne_id:id,bezeichnung:bez,kundenname:kunde,standort:standort,meldungstyp:mel,evse_id:evse,prioritaet:prio})
       i=j
     } else { i++ }
   }
@@ -514,7 +515,7 @@ function parse(raw) {
       if (e.meldungstyp==='offline') ex.meldungstyp='offline'
       if (e.evse_id&&!ex.ladepunkte.find(lp=>lp.evse_id===e.evse_id)) ex.ladepunkte.push({evse_id:e.evse_id,prioritaet:e.prioritaet})
     } else {
-      map.set(e.interne_id,{interne_id:e.interne_id,bezeichnung:e.bezeichnung,kundenname:e.kundenname,standort:null,meldungstyp:e.meldungstyp,ladepunkte:[{evse_id:e.evse_id,prioritaet:e.prioritaet}]})
+      map.set(e.interne_id,{interne_id:e.interne_id,bezeichnung:e.bezeichnung,kundenname:e.kundenname,standort:e.standort||null,meldungstyp:e.meldungstyp,ladepunkte:[{evse_id:e.evse_id,prioritaet:e.prioritaet}]})
     }
   }
   return Array.from(map.values())
@@ -562,7 +563,7 @@ async function doImport() {
         dup++
       } else {
         // Neu anlegen – auch wenn erledigt existiert
-        const ns=await sb('stationen',{method:'POST',body:JSON.stringify({interne_id:s.interne_id,bezeichnung:s.bezeichnung,kundenname:s.kundenname,standort:s.standort,meldungstyp:s.meldungstyp})})
+        const ns=await sb('stationen',{method:'POST',body:JSON.stringify({interne_id:s.interne_id,bezeichnung:s.bezeichnung,kundenname:s.kundenname,standort:s.standort||null,meldungstyp:s.meldungstyp})})
         if (ns&&ns[0]) { const sid=ns[0].id; for (const p of s.ladepunkte) await sb('ladepunkte',{method:'POST',body:JSON.stringify({station_id:sid,evse_id:p.evse_id,prioritaet:p.prioritaet})}) }
         neu++
       }
