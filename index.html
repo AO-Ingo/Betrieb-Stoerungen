@@ -626,13 +626,8 @@ function openDetail(id) {
 
     <!-- Details -->
     <div style="border-top:1px solid var(--border);padding-top:12px;margin-bottom:12px">
-      <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Details</div>
-      <div class="detail-label">Dashboard</div>
-      <div style="font-size:13px;color:var(--text);margin-bottom:8px">${s.kundenname||'–'}</div>
-      <div class="detail-label">Standort</div>
-      <div style="font-size:13px;color:var(--text);margin-bottom:8px">${s.standort||'–'}</div>
-      ${tlink?`<div style="margin-top:4px">${tlink}</div>`:''}
-      <div style="font-size:11px;color:var(--text3);margin-top:8px">Erstellt: ${datum}${faelligStr?' · Fällig: '+faelligStr:''}</div>
+      ${tlink?`<div style="margin-bottom:8px">${tlink}</div>`:''}
+      <div style="font-size:11px;color:var(--text3)">Erstellt: ${datum}${faelligStr?' · Fällig: '+faelligStr:''}</div>
     </div>
 
     <!-- Notizen highlighted -->
