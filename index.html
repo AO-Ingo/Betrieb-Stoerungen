@@ -590,15 +590,28 @@ function openDetail(id) {
     : `<span class="badge badge-stoerung">⚠ Störung</span>`
 
   document.getElementById('dp-body').innerHTML = `
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:12px">
-      <div>
-        <div class="evse-tags">${tags||'–'}</div>
-        <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px">${s.interne_id}</div>
+    <!-- Badge + Titel -->
+    <div style="margin-bottom:12px">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
+        ${statusBadge}
+        ${s.zoho_ticket_id?`<span class="badge badge-ticket">#${s.zoho_ticket_id}</span>`:''}
+        ${s.prioritaet_farbe?`<span style="font-size:11px;color:var(--text2)">${s.prioritaet_farbe==='rot'?'🔴 Rot':s.prioritaet_farbe==='gelb'?'🟡 Warten auf Kunden':'🟢 Grün'}</span>`:''}
       </div>
-      <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap">${statusBadge}${s.zoho_ticket_id?`<span class="badge badge-ticket">#${s.zoho_ticket_id}</span>`:''}</div>
+      <div style="font-size:15px;font-weight:600;color:var(--text)">${s.kundenname||'–'}</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:2px">${s.standort||'–'}</div>
+      <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px">${s.interne_id}</div>
+      <div class="evse-tags" style="margin-top:6px">${tags||'–'}</div>
     </div>
 
-    <div class="detail-field" style="margin-bottom:12px">
+    <!-- Betrieb -->
+    <div style="border-top:1px solid var(--border);padding-top:12px;margin-bottom:12px">
+      <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Betrieb</div>
+      <div class="detail-label">Router online</div>
+      <div style="display:flex;gap:6px;margin-top:4px;margin-bottom:10px">
+        <button class="btn btn-sm ${s.router_online===true?'btn-green':'btn-secondary'}" onclick="setRouterOnline('${s.id}',true)">🟢 Online</button>
+        <button class="btn btn-sm ${s.router_online===false?'btn-red':'btn-secondary'}" onclick="setRouterOnline('${s.id}',false)">🔴 Offline</button>
+        <button class="btn btn-sm btn-secondary" onclick="setRouterOnline('${s.id}',null)">– Unbekannt</button>
+      </div>
       <div class="detail-label">Betroffener Umfang</div>
       <select id="dp-umfang-${s.id}" onchange="setUmfang('${s.id}',this.value)" style="width:100%;padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif;background:var(--bg2);margin-top:4px">
         <option value="">– Nicht angegeben</option>
@@ -609,36 +622,40 @@ function openDetail(id) {
       </select>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:12px">
-      <div>
-        <div class="detail-label">Dashboard</div>
-        <div class="detail-value" style="font-weight:500">${s.kundenname||'–'}</div>
-      </div>
-      <div>
-        <div class="detail-label">Standort</div>
-        <div class="detail-value">${s.standort||'–'}</div>
-      </div>
+    <!-- Details -->
+    <div style="border-top:1px solid var(--border);padding-top:12px;margin-bottom:12px">
+      <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Details</div>
+      <div class="detail-label">Dashboard</div>
+      <div style="font-size:13px;color:var(--text);margin-bottom:8px">${s.kundenname||'–'}</div>
+      <div class="detail-label">Standort</div>
+      <div style="font-size:13px;color:var(--text);margin-bottom:8px">${s.standort||'–'}</div>
+      ${tlink?`<div style="margin-top:4px">${tlink}</div>`:''}
+      <div style="font-size:11px;color:var(--text3);margin-top:8px">Erstellt: ${datum}${faelligStr?' · Fällig: '+faelligStr:''}</div>
     </div>
 
-    ${s.notizen||tlink?`<div style="padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:12px">
-      ${s.notizen?`<div class="detail-label" style="margin-bottom:4px">Notizen</div><div style="font-size:13px;color:var(--text)">${s.notizen}</div>`:''}
-      ${tlink?`<div style="margin-top:6px">${tlink}</div>`:''}
+    <!-- Notizen highlighted -->
+    ${s.notizen?`<div style="border-top:1px solid var(--border);padding-top:12px;margin-bottom:12px">
+      <div style="background:var(--amber-bg);border-left:3px solid var(--amber);border-radius:0 var(--radius) var(--radius) 0;padding:10px 12px">
+        <div style="font-size:10px;font-weight:600;color:var(--amber);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px">Notizen</div>
+        <div style="font-size:13px;color:var(--text)">${s.notizen}</div>
+      </div>
     </div>`:''}
 
     ${isErl&&s.loesung?`<div class="info-box info-box-green" style="margin-bottom:12px">✓ Lösung: ${s.loesung}</div>`:''}
     ${isIrr&&s.irrelevant_grund?`<div class="info-box info-box-gray" style="margin-bottom:12px">Grund: ${s.irrelevant_grund}</div>`:''}
 
-    <div style="background:var(--bg2);border-radius:var(--radius);padding:12px;margin-bottom:12px">
-      <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Verlauf & Kommentare</div>
+    <!-- Kommentare -->
+    <div style="border-top:1px solid var(--border);padding-top:12px">
+      <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Verlauf & Kommentare</div>
       <div style="display:flex;gap:6px;margin-bottom:10px">
-        <input id="dp-kommentar-input" placeholder="Neuer Kommentar…" style="flex:1;padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif;background:var(--bg)" onkeydown="if(event.key==='Enter')addKommentar('${s.id}')">
+        <input id="dp-kommentar-input" placeholder="Neuer Kommentar…" style="flex:1;padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif;background:var(--bg2)" onkeydown="if(event.key==='Enter')addKommentar('${s.id}')">
         <button class="btn btn-primary btn-sm" onclick="addKommentar('${s.id}')">+ Hinzufügen</button>
       </div>
       <div id="dp-kommentare-list">
         ${(s.kommentare||[]).sort((a,b)=>new Date(b.erstellt_am)-new Date(a.erstellt_am)).map(k=>{
           const dt = new Date(k.erstellt_am)
           const dstr = dt.toLocaleDateString('de-DE') + ' ' + dt.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})
-          return `<div style="border-left:2px solid var(--orange);padding:6px 10px;margin-bottom:6px;background:var(--bg);border-radius:0 var(--radius) var(--radius) 0" id="k-${k.id}">
+          return `<div style="border-left:2px solid var(--orange);padding:6px 10px;margin-bottom:6px;background:var(--bg2);border-radius:0 var(--radius) var(--radius) 0" id="k-${k.id}">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
               <span style="font-size:11px;color:var(--text3)">${dstr}</span>
               <div style="display:flex;gap:2px">
@@ -658,16 +675,6 @@ function openDetail(id) {
         }).join('') || '<div style="color:var(--text3);font-size:13px">Noch keine Kommentare</div>'}
       </div>
     </div>
-
-    <div style="padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:4px">
-      <div class="detail-label">Router online</div>
-      <div style="display:flex;gap:6px;margin-top:4px">
-        <button class="btn btn-sm ${s.router_online===true?'btn-green':'btn-secondary'}" onclick="setRouterOnline('${s.id}',true)">🟢 Online</button>
-        <button class="btn btn-sm ${s.router_online===false?'btn-red':'btn-secondary'}" onclick="setRouterOnline('${s.id}',false)">🔴 Offline</button>
-        <button class="btn btn-sm btn-secondary" onclick="setRouterOnline('${s.id}',null)">– Unbekannt</button>
-      </div>
-    </div>
-    <div style="font-size:11px;color:var(--text3);margin-top:8px">Erstellt: ${datum}${faelligStr?' · Fällig: '+faelligStr:''}</div>
     <div class="detail-section">
       <div class="detail-section-title">Verlauf & Kommentare</div>
       <div style="display:flex;gap:6px;margin-bottom:12px">
