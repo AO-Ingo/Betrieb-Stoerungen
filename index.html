@@ -551,114 +551,53 @@ function cardHTML(s) {
   const badgeText = s.meldungstyp==='offline' ? '⚡ Offline' : '⚠ Störung'
   const tb = s.zoho_ticket_id ? `<span class="badge badge-ticket">#${s.zoho_ticket_id}</span>` : ''
   const tags = (s.ladepunkte||[]).map(lp=>`<span class="evse-tag">${lp.evse_id||'–'}</span>`).join('')
-  const datum = new Date(s.erstellt_am).toLocaleDateString('de-DE')
   const faelligStr = s.faelligkeit ? new Date(s.faelligkeit+'T00:00:00').toLocaleDateString('de-DE') : null
-  const tlink = s.zoho_ticket_url ? `<a href="${s.zoho_ticket_url}" target="_blank" style="color:#2563eb;font-size:13px">🔗 Zoho Ticket</a>` : ''
-
-  const infoBox = isErl && s.loesung
-    ? `<div class="info-box info-box-green">✓ ${s.loesung}</div>`
-    : isIrr && s.irrelevant_grund
-    ? `<div class="info-box info-box-gray">${s.irrelevant_grund}</div>`
-    : ''
-
-  let aktionen = ''
-  if (isAktiv) {
-    aktionen = `
-      <button class="btn btn-success btn-sm" onclick="togglePopup('erl-${id}')">✓ Erledigt</button>
-      <button class="btn btn-danger btn-sm" onclick="togglePopup('irr-${id}')">✕ Irrelevant</button>
-      <button class="btn btn-secondary btn-sm" onclick="loeschen('${id}')">🗑</button>`
-  } else if (isErl) {
-    aktionen = `<button class="btn btn-secondary btn-sm" onclick="loeschen('${id}')">🗑</button>`
-  } else if (isIrr) {
-    aktionen = `
-      <button class="btn btn-success btn-sm" onclick="reaktivieren('${id}')">↩ Reaktivieren</button>
-      <button class="btn btn-secondary btn-sm" onclick="loeschen('${id}')">🗑</button>`
-  }
-
-  const erlPopup = isAktiv ? `
-    <div class="popup-box" id="erl-${id}">
-      <div style="font-weight:500;font-size:13px;margin-bottom:8px">Wie wurde die Störung behoben?</div>
-      <textarea id="erl-txt-${id}" placeholder="Lösung beschreiben…"></textarea>
-      <div class="popup-actions">
-        <button class="btn btn-green btn-sm" onclick="markiereErledigt('${id}')">✓ Bestätigen</button>
-        <button class="btn btn-secondary btn-sm" onclick="togglePopup('erl-${id}')">Abbrechen</button>
-      </div>
-    </div>` : ''
-
-  const irrPopup = isAktiv ? `
-    <div class="popup-box" id="irr-${id}">
-      <div style="font-weight:500;font-size:13px;margin-bottom:8px">Grund für Irrelevanz</div>
-      <select id="irr-grund-${id}">${GRUENDE.map(g=>`<option>${g}</option>`).join('')}</select>
-      <input type="text" id="irr-notiz-${id}" placeholder="Zusätzliche Notiz (optional)">
-      <div class="popup-actions">
-        <button class="btn btn-red btn-sm" onclick="markiereIrrelevant('${id}')">Bestätigen</button>
-        <button class="btn btn-secondary btn-sm" onclick="togglePopup('irr-${id}')">Abbrechen</button>
-      </div>
-    </div>` : ''
 
   // Router Symbol
   const routerSym = s.router_online===true
-    ? '<span title="Router online" style="color:#16a34a;font-size:13px">🟢</span>'
+    ? '<span title="Router online" style="color:#16a34a;font-size:12px;line-height:1">🟢</span>'
     : s.router_online===false
-    ? '<span title="Router offline" style="color:#dc2626;font-size:13px">🔴</span>'
+    ? '<span title="Router offline" style="color:#dc2626;font-size:12px;line-height:1">🔴</span>'
     : ''
 
   // Neuester Kommentar
   const neusterK = (s.kommentare||[]).sort((a,b)=>new Date(b.erstellt_am)-new Date(a.erstellt_am))[0]
-  const kVorschau = neusterK
-    ? `<span style="font-size:11px;color:var(--text2);font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${neusterK.text}</span>`
-    : '' = s.router_online===true ? '<span title="Router online" style="color:#16a34a;font-size:12px">🟢</span>' : s.router_online===false ? '<span title="Router offline" style="color:#dc2626;font-size:12px">🔴</span>' : ''
-  // Neuester Kommentar
-  const neusterK = (s.kommentare||[]).sort((a,b)=>new Date(b.erstellt_am)-new Date(a.erstellt_am))[0]
-  const kVorschau = neusterK ? `<span style="font-size:11px;color:var(--text2);font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:300px">${neusterK.text}</span>` : ''
+  const kVorschau = neusterK ? neusterK.text : ''
+
+  // Fälligkeit
+  let faelligHtml = ''
+  if (faelligStr) {
+    const heute = new Date(); heute.setHours(0,0,0,0)
+    const faellig = new Date(s.faelligkeit+'T00:00:00')
+    const diffTage = Math.ceil((faellig-heute)/(1000*60*60*24))
+    const warn = diffTage<=3 ? '<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" style=\"display:inline;vertical-align:middle;margin-right:3px\"><path d=\"M12 2L2 20h20L12 2z\" stroke=\"#dc2626\" stroke-width=\"2\" stroke-linejoin=\"round\" fill=\"none\"/><line x1=\"12\" y1=\"9\" x2=\"12\" y2=\"14\" stroke=\"#dc2626\" stroke-width=\"2\" stroke-linecap=\"round\"/><circle cx=\"12\" cy=\"17\" r=\"1\" fill=\"#dc2626\"/></svg>' : ''
+    const kleur = diffTage<=0?'#dc2626':diffTage<=3?'#d97706':'var(--text3)'
+    faelligHtml = `<span style="font-size:11px;color:${kleur};font-weight:${diffTage<=3?'600':'400'}">${warn}📅 ${faelligStr}</span>`
+  }
 
   return `<div class="card${farbklasse}" onclick="openDetail('${id}')" id="card-${id}">
-    <div class="card-row">
-      <div class="card-main">
+    <div style="display:flex;align-items:center;gap:6px;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:6px;min-width:0;flex:1;overflow:hidden">
         <span class="badge ${badgeClass}" style="flex-shrink:0">${badgeText}</span>
-        <span style="font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.kundenname||s.bezeichnung||'–'}</span>
+        <span style="font-weight:500;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.kundenname||s.bezeichnung||'–'}</span>
         ${tb}
       </div>
-      <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">
+      <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
+        ${routerSym}
         ${tags}
       </div>
-  
     </div>
-    <div style="display:flex;align-items:center;gap:12px;margin-top:3px;flex-wrap:wrap">
-      ${s.standort?`<span style="font-size:12px;color:#888">📍 ${s.standort}</span>`:s.bezeichnung?`<span style="font-size:12px;color:#888">${s.bezeichnung}</span>`:''}
-      </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:3px;gap:8px">
+      <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;overflow:hidden">
+        ${s.standort?`<span style="font-size:11px;color:var(--text3);flex-shrink:0">📍 ${s.standort}</span>`:''}
+        ${kVorschau?`<span style="font-size:11px;color:var(--text2);font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${kVorschau}</span>`:''}
+        ${faelligHtml}
       </div>
       <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;white-space:nowrap;flex-shrink:0">${s.interne_id}</span>
     </div>
-      ${faelligStr?(()=>{
-        const heute = new Date(); heute.setHours(0,0,0,0)
-        const faellig = new Date(s.faelligkeit+'T00:00:00')
-        const diffTage = Math.ceil((faellig-heute)/(1000*60*60*24))
-        const warnSvg = diffTage<=3 ? '<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" style=\"display:inline;vertical-align:middle;margin-right:3px\"><path d=\"M12 2L2 20h20L12 2z\" stroke=\"#dc2626\" stroke-width=\"2\" stroke-linejoin=\"round\" fill=\"none\"/><line x1=\"12\" y1=\"9\" x2=\"12\" y2=\"14\" stroke=\"#dc2626\" stroke-width=\"2\" stroke-linecap=\"round\"/><circle cx=\"12\" cy=\"17\" r=\"1\" fill=\"#dc2626\"/></svg>' : ''
-        const kleur = diffTage<=0?'#dc2626':diffTage<=3?'#d97706':'#666'
-        const fett = diffTage<=3?'600':'400'
-        return `<span style="font-size:12px;color:${kleur};font-weight:${fett}">${warnSvg}📅 ${faelligStr}</span>`
-      })():''}
-      ${infoBox}
-    </div>
-    <div class="card-details" id="d${id}" style="display:none">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-        <div><div class="detail-label">Erstellt</div><div class="detail-value">${datum}</div></div>
-        <div><div class="detail-label">Ladepunkte</div><div class="detail-value">${(s.ladepunkte||[]).length}</div></div>
-        ${s.notizen?`<div><div class="detail-label">Notizen</div><div class="detail-value">${s.notizen}</div></div>`:''}
-        ${tlink?`<div style="margin-top:4px">${tlink}</div>`:''}
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('ef${id}').style.display='flex'">✏ Bearbeiten</button>
-        ${aktionen}
-      </div>
-      ${erlPopup}
-      ${irrPopup}
-
-    </div>
   </div>`
 }
-// OLD_CARDFN_END
+
 
 let currentStation = null
 
