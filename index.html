@@ -464,9 +464,7 @@ async function doImport() {
         </div>`).join('')}
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <button class="btn btn-green btn-sm" onclick="markiereAusgewaehltErledigt()">✓ Ausgewählte als erledigt markieren</button>
-        <button class="btn btn-secondary btn-sm" onclick="document.querySelectorAll('.rueckwaerts-check').forEach(cb=>cb.checked=false)">Alles abwählen</button>
-        <button class="btn btn-secondary btn-sm" onclick="document.querySelectorAll('.rueckwaerts-check').forEach(cb=>cb.checked=true)">Alles auswählen</button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px"><button class="btn btn-green btn-sm" onclick="markiereAusgewaehltErledigt()">✓ Erledigt markieren</button><button class="btn btn-secondary btn-sm" onclick="document.querySelectorAll('.rueckwaerts-check').forEach(cb=>cb.checked=false)">Alles abwählen</button><button class="btn btn-secondary btn-sm" onclick="document.querySelectorAll('.rueckwaerts-check').forEach(cb=>cb.checked=true)">Alles auswählen</button></div>
       </div>
     </div>` : '<div style="margin-top:12px;color:#16a34a;font-size:13px">✓ Alle aktiven Stationen sind noch im Export</div>'}
   `
