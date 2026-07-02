@@ -293,11 +293,14 @@ textarea.raw { width: 100%; height: 200px; font-family: 'DM Mono', monospace; fo
       <div id="list"></div>
     </div>
     <div class="detail-panel" id="detail-panel">
-      <div class="detail-header">
+      <div class="detail-header" id="dp-header" style="display:none">
         <div class="detail-header-info">
           <div class="detail-title" id="dp-title">–</div>
           <div class="detail-sub" id="dp-sub">–</div>
         </div>
+        <button class="detail-close" onclick="closeDetail()">✕</button>
+      </div>
+      <div style="display:flex;justify-content:flex-end;padding:10px 16px 0;flex-shrink:0">
         <button class="detail-close" onclick="closeDetail()">✕</button>
       </div>
       <div class="detail-body" id="dp-body"></div>
@@ -590,13 +593,15 @@ function openDetail(id) {
     : `<span class="badge badge-stoerung">⚠ Störung</span>`
 
   document.getElementById('dp-body').innerHTML = `
-    <!-- Badge + EVSE -->
-    <div style="margin-bottom:12px">
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+    <div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
         ${statusBadge}
         ${s.zoho_ticket_id?`<span class="badge badge-ticket">#${s.zoho_ticket_id}</span>`:''}
         ${s.prioritaet_farbe?`<span style="font-size:11px;color:var(--text2)">${s.prioritaet_farbe==='rot'?'🔴 Rot':s.prioritaet_farbe==='gelb'?'🟡 Warten auf Kunden':'🟢 Grün'}</span>`:''}
       </div>
+      <div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:2px">${s.kundenname||'–'}</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:4px">${s.standort||'–'}</div>
+      <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:6px">${s.interne_id}</div>
       <div class="evse-tags">${tags||'–'}</div>
     </div>
 
