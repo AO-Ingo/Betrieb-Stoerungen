@@ -763,10 +763,7 @@ async function markiereIrrelevant(id) {
   try {
     await sb(`stationen?id=eq.${id}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({ irrelevant: true, irrelevant_grund: notiz ? grund+': '+notiz : grund }) })
     await loadStationen()
-    if (currentStation && currentStation.id === id) {
-      const updated = stationen.find(x => x.id === id)
-      if (updated) openDetail(id)
-    }
+    openDetail(id)
   } catch(e) { alert('Fehler: '+e.message) }
 }
 
@@ -804,14 +801,15 @@ async function loescheLP(lpId, stationId) {
 async function save(id) {
   try {
     // Station-Felder speichern
+    const val = (elId) => { const el = document.getElementById(elId); return el ? el.value||null : null }
     await sb(`stationen?id=eq.${id}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({
-      kundenname: document.getElementById('ef-kunde-'+id).value||null,
-      standort: document.getElementById('ef-standort-'+id).value||null,
-      zoho_ticket_id: document.getElementById('ef-tid-'+id).value||null,
-      zoho_ticket_url: document.getElementById('ef-turl-'+id).value||null,
-      faelligkeit: document.getElementById('ef-date-'+id).value||null,
-      prioritaet_farbe: document.getElementById('ef-farbe-'+id).value||null,
-      notizen: document.getElementById('ef-notes-'+id).value||null
+      kundenname: val('ef-kunde-'+id),
+      standort: val('ef-standort-'+id),
+      zoho_ticket_id: val('ef-tid-'+id),
+      zoho_ticket_url: val('ef-turl-'+id),
+      faelligkeit: val('ef-date-'+id),
+      prioritaet_farbe: val('ef-farbe-'+id),
+      notizen: val('ef-notes-'+id)
     })})
 
     // Bestehende EVSE-IDs aktualisieren
