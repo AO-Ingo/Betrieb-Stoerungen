@@ -383,49 +383,10 @@ async function sucheAlleTabs() {
       </div>
       ${treffer.map(s => {
         const farbklasse = s.prioritaet_farbe ? ' '+s.prioritaet_farbe : ''
-        const badgeClass = s.erledigt ? 'badge-erl' : s.irrelevant ? 'badge-irr' : s.meldungstyp==='offline' ? 'badge-offline' : 'badge-stoerung'
+        const badgeClass = isErl ? 'badge-erl' : isIrr ? 'badge-irr' : s.meldungstyp==='offline' ? 'badge-offline' : 'badge-stoerung'
         const tags = (s.ladepunkte||[]).map(lp=>`<span class="evse-tag">${lp.evse_id||'–'}</span>`).join('')
         const faelligStr = s.faelligkeit ? new Date(s.faelligkeit+'T00:00:00').toLocaleDateString('de-DE') : null
-        // Router Symbol
-  const routerSym = s.router_online===true
-    ? '<span title="Router online" style="color:#16a34a;font-size:13px">🟢</span>'
-    : s.router_online===false
-    ? '<span title="Router offline" style="color:#dc2626;font-size:13px">🔴</span>'
-    : ''
-
-  // Neuester Kommentar
-  const neusterK = (s.kommentare||[]).sort((a,b)=>new Date(b.erstellt_am)-new Date(a.erstellt_am))[0]
-  const kVorschau = neusterK
-    ? `<span style="font-size:11px;color:var(--text2);font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${neusterK.text}</span>`
-    : '' = s.router_online===true ? '<span title="Router online" style="color:#16a34a;font-size:12px">🟢</span>' : s.router_online===false ? '<span title="Router offline" style="color:#dc2626;font-size:12px">🔴</span>' : ''
-  // Neuester Kommentar
-  const neusterK = (s.kommentare||[]).sort((a,b)=>new Date(b.erstellt_am)-new Date(a.erstellt_am))[0]
-  const kVorschau = neusterK ? `<span style="font-size:11px;color:var(--text2);font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:300px">${neusterK.text}</span>` : ''
-
-  return `<div class="card${farbklasse}" onclick="openDetail('${id}')" id="card-${id}">
-          <div class="card-row">
-            <div class="card-main">
-              <span class="badge ${badgeClass}" style="flex-shrink:0">${tabLabel(s)}</span>
-              <span style="font-weight:600;font-size:14px">${s.kundenname||s.bezeichnung||'–'}</span>
-            </div>
-            <div style="display:flex;gap:4px;flex-wrap:wrap">${tags}</div>
-          </div>
-          <div style="display:flex;align-items:center;gap:12px;margin-top:3px;flex-wrap:wrap">
-            ${s.standort?`<span style="font-size:12px;color:#888">📍 ${s.standort}</span>`:s.bezeichnung?`<span style="font-size:12px;color:#888">${s.bezeichnung}</span>`:''}
-            <span style="font-size:11px;color:#aaa;font-family:monospace">${s.interne_id}</span>
-            ${(()=>{const sorted=(s.kommentare||[]).sort((a,b)=>new Date(b.erstellt_am)-new Date(a.erstellt_am));const k=sorted[0];return k?`<span style="font-size:11px;color:var(--text2);font-style:italic;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${k.text}">${k.text}</span>`:''})()}
-      ${faelligStr?(()=>{
-        const heute = new Date(); heute.setHours(0,0,0,0)
-        const faellig = new Date(s.faelligkeit+'T00:00:00')
-        const diffTage = Math.ceil((faellig-heute)/(1000*60*60*24))
-        const warnSvg = diffTage<=3 ? '<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" style=\"display:inline;vertical-align:middle;margin-right:3px\"><path d=\"M12 2L2 20h20L12 2z\" stroke=\"#dc2626\" stroke-width=\"2\" stroke-linejoin=\"round\" fill=\"none\"/><line x1=\"12\" y1=\"9\" x2=\"12\" y2=\"14\" stroke=\"#dc2626\" stroke-width=\"2\" stroke-linecap=\"round\"/><circle cx=\"12\" cy=\"17\" r=\"1\" fill=\"#dc2626\"/></svg>' : ''
-        const kleur = diffTage<=0?'#dc2626':diffTage<=3?'#d97706':'#666'
-        const fett = diffTage<=3?'600':'400'
-        return `<span style="font-size:12px;color:${kleur};font-weight:${fett}">${warnSvg}📅 ${faelligStr}</span>`
-      })():''}
-          </div>
-        </div>`
-      }).join('')}
+        return cardHTML(s)
     `
   } catch(e) {
     container.innerHTML = `<div class="error-box">Fehler: ${e.message}</div>`
