@@ -361,7 +361,7 @@ function parse(raw) {
       const t = line.split('\t').map(x=>x.trim())
       const id = t[0]; if (!id) { i++; continue }
       const evse = t[2]&&t[2]!=='-'?t[2]:null
-      const bez = t[3]||null
+      const bez = t[3]&&t[3]!=='-'?t[3]:null
       const kunde = t[4]&&t[4]!=='-'?t[4]:null
       let mel='', prio=null, j=i+1
       while (j<lines.length&&j<i+6) {
@@ -418,7 +418,8 @@ async function doImport() {
   for (const s of parsed) {
     try {
       // Nur gegen aktive + irrelevante prüfen, NICHT gegen erledigte
-      const ex = await sb(`stationen?interne_id=eq.${encodeURIComponent(s.interne_id)}&bezeichnung=eq.${encodeURIComponent(s.bezeichnung||'')}&erledigt=eq.false&select=id,meldungstyp`)
+      const bezFilter = s.bezeichnung ? `&bezeichnung=eq.${encodeURIComponent(s.bezeichnung)}` : '&bezeichnung=is.null'
+      const ex = await sb(`stationen?interne_id=eq.${encodeURIComponent(s.interne_id)}${bezFilter}&erledigt=eq.false&select=id,meldungstyp`)
       if (ex&&ex.length) {
         const e=ex[0]
         if (e.meldungstyp==='stoerung'&&s.meldungstyp==='offline') await sb(`stationen?id=eq.${e.id}`,{method:'PATCH',prefer:'return=minimal',body:JSON.stringify({meldungstyp:'offline'})})
@@ -440,8 +441,8 @@ async function doImport() {
   let nichtMehrImport = []
   try {
     const aktive = await sb('stationen?erledigt=eq.false&irrelevant=eq.false&select=id,interne_id,bezeichnung,kundenname,meldungstyp') || []
-    const importKeys = new Set(parsed.map(s => s.interne_id + '|||' + (s.bezeichnung||'')))
-    nichtMehrImport = aktive.filter(s => !importKeys.has(s.interne_id + '|||' + (s.bezeichnung||'')))
+    const importKeys = new Set(parsed.map(s => s.interne_id + '|||' + (s.bezeichnung||'__NULL__')))
+    nichtMehrImport = aktive.filter(s => !importKeys.has(s.interne_id + '|||' + (s.bezeichnung||'__NULL__')))
   } catch(e) {}
 
   document.getElementById('mbody').innerHTML=`<div class="result-grid">
