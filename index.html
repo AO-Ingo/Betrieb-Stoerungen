@@ -590,17 +590,14 @@ function openDetail(id) {
     : `<span class="badge badge-stoerung">⚠ Störung</span>`
 
   document.getElementById('dp-body').innerHTML = `
-    <!-- Badge + Titel -->
+    <!-- Badge + EVSE -->
     <div style="margin-bottom:12px">
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
         ${statusBadge}
         ${s.zoho_ticket_id?`<span class="badge badge-ticket">#${s.zoho_ticket_id}</span>`:''}
         ${s.prioritaet_farbe?`<span style="font-size:11px;color:var(--text2)">${s.prioritaet_farbe==='rot'?'🔴 Rot':s.prioritaet_farbe==='gelb'?'🟡 Warten auf Kunden':'🟢 Grün'}</span>`:''}
       </div>
-      <div style="font-size:15px;font-weight:600;color:var(--text)">${s.kundenname||'–'}</div>
-      <div style="font-size:13px;color:var(--text2);margin-top:2px">${s.standort||'–'}</div>
-      <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px">${s.interne_id}</div>
-      <div class="evse-tags" style="margin-top:6px">${tags||'–'}</div>
+      <div class="evse-tags">${tags||'–'}</div>
     </div>
 
     <!-- Betrieb -->
