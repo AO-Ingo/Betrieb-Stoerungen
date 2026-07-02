@@ -382,11 +382,8 @@ async function sucheAlleTabs() {
         <button class="btn btn-secondary btn-sm" style="margin-left:8px" onclick="document.getElementById('search-all').value='';sucheAlleTabs()">✕ Schließen</button>
       </div>
       ${treffer.map(s => {
-        const farbklasse = s.prioritaet_farbe ? ' '+s.prioritaet_farbe : ''
-        const badgeClass = isErl ? 'badge-erl' : isIrr ? 'badge-irr' : s.meldungstyp==='offline' ? 'badge-offline' : 'badge-stoerung'
-        const tags = (s.ladepunkte||[]).map(lp=>`<span class="evse-tag">${lp.evse_id||'–'}</span>`).join('')
-        const faelligStr = s.faelligkeit ? new Date(s.faelligkeit+'T00:00:00').toLocaleDateString('de-DE') : null
         return cardHTML(s)
+      }).join('')}
     `
   } catch(e) {
     container.innerHTML = `<div class="error-box">Fehler: ${e.message}</div>`
