@@ -544,14 +544,13 @@ function cardHTML(s) {
         ${tb}
       </div>
       <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
-        ${routerSym}
-        ${tags}
+        ${tags}${routerSym}
       </div>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:3px;gap:8px">
-      <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;overflow:hidden">
+      <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;overflow:hidden;flex-wrap:wrap">
         ${s.standort?`<span style="font-size:11px;color:var(--text3);flex-shrink:0">📍 ${s.standort}</span>`:''}
-        ${kVorschau?`<span style="font-size:11px;color:var(--text2);font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${kVorschau}</span>`:''}
+        ${kVorschau?`<span style="font-size:11px;color:var(--text2);background:var(--bg2);border-left:2px solid var(--orange);padding:1px 6px;border-radius:0 3px 3px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:250px">💬 ${kVorschau}</span>`:''}
         ${faelligHtml}
       </div>
       <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;white-space:nowrap;flex-shrink:0">${s.interne_id}</span>
