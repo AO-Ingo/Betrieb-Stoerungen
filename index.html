@@ -347,27 +347,44 @@ function cardHTML(s) {
         ${tlink?`<div style="margin-top:4px">${tlink}</div>`:''}
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-        ${isAktiv?`<button class="btn btn-secondary btn-sm" onclick="document.getElementById('ef${id}').style.display='flex'">✏ Bearbeiten</button>`:''}
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('ef${id}').style.display='flex'">✏ Bearbeiten</button>
         ${aktionen}
       </div>
       ${erlPopup}
       ${irrPopup}
-      ${isAktiv?`<div class="edit-form" id="ef${id}" style="display:none">
-        <input id="et${id}" placeholder="Zoho Ticket-ID" value="${s.zoho_ticket_id||''}">
-        <input id="eu${id}" placeholder="Zoho Ticket-URL" value="${s.zoho_ticket_url||''}">
+      <div class="edit-form" id="ef${id}" style="display:none">
+        <div class="detail-label">Kundenname</div>
+        <input id="ef-kunde-${id}" placeholder="Kundenname" value="${s.kundenname||''}">
+        <div class="detail-label">Standort</div>
+        <input id="ef-standort-${id}" placeholder="Standort" value="${s.standort||''}">
+        <div class="detail-label">EVSE-IDs</div>
+        <div id="ef-evse-list-${id}">
+          ${(s.ladepunkte||[]).map(lp=>`<div style="display:flex;gap:4px;margin-bottom:4px">
+            <input style="flex:1;padding:4px 8px;border:1px solid #ddd;border-radius:6px;font-size:12px;font-family:monospace" value="${lp.evse_id||''}" data-lpid="${lp.id}" class="evse-input-${id}">
+            <button class="btn btn-danger btn-sm" onclick="loescheLP('${lp.id}','${id}')">✕</button>
+          </div>`).join('')}
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="addEvseRow('${id}')">+ EVSE-ID hinzufügen</button>
+        <div class="detail-label" style="margin-top:8px">Zoho Ticket-ID</div>
+        <input id="ef-tid-${id}" placeholder="Zoho Ticket-ID" value="${s.zoho_ticket_id||''}">
+        <div class="detail-label">Zoho Ticket-URL</div>
+        <input id="ef-turl-${id}" placeholder="https://desk.zoho.eu/..." value="${s.zoho_ticket_url||''}">
+        <div class="detail-label">Fälligkeitsdatum</div>
         <input type="date" id="ef-date-${id}" value="${s.faelligkeit||''}">
+        <div class="detail-label">Farbcode</div>
         <select id="ef-farbe-${id}">
           <option value="">Kein Farbcode</option>
           <option value="gruen" ${s.prioritaet_farbe==='gruen'?'selected':''}>🟢 Grün – kein Handlungsbedarf</option>
           <option value="gelb" ${s.prioritaet_farbe==='gelb'?'selected':''}>🟡 Warten auf Kunden</option>
           <option value="rot" ${s.prioritaet_farbe==='rot'?'selected':''}>🔴 Rot – sofortiger Handlungsbedarf</option>
         </select>
-        <textarea id="en${id}" placeholder="Notizen">${s.notizen||''}</textarea>
+        <div class="detail-label">Notizen</div>
+        <textarea id="ef-notes-${id}" placeholder="Notizen">${s.notizen||''}</textarea>
         <div class="edit-actions">
           <button class="btn btn-primary btn-sm" onclick="save('${id}')">💾 Speichern</button>
           <button class="btn btn-secondary btn-sm" onclick="document.getElementById('ef${id}').style.display='none'">Abbrechen</button>
         </div>
-      </div>`:''}
+      </div>
     </div>
   </div>`
 }
@@ -410,9 +427,47 @@ async function loeschen(id) {
   } catch(e) { alert('Fehler: '+e.message) }
 }
 
+function addEvseRow(stationId) {
+  const container = document.getElementById('ef-evse-list-' + stationId)
+  const div = document.createElement('div')
+  div.style.cssText = 'display:flex;gap:4px;margin-bottom:4px'
+  div.innerHTML = `<input style="flex:1;padding:4px 8px;border:1px solid #ddd;border-radius:6px;font-size:12px;font-family:monospace" placeholder="EVSE-ID" class="evse-input-${stationId} evse-new"><button class="btn btn-danger btn-sm" onclick="this.parentElement.remove()">✕</button>`
+  container.appendChild(div)
+}
+
+async function loescheLP(lpId, stationId) {
+  try {
+    await sb(`ladepunkte?id=eq.${lpId}`, { method:'DELETE', prefer:'return=minimal' })
+    loadStationen()
+  } catch(e) { alert('Fehler: '+e.message) }
+}
+
 async function save(id) {
   try {
-    await sb(`stationen?id=eq.${id}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({ zoho_ticket_id: document.getElementById('et'+id).value||null, zoho_ticket_url: document.getElementById('eu'+id).value||null, notizen: document.getElementById('en'+id).value||null, faelligkeit: document.getElementById('ef-date-'+id).value||null, prioritaet_farbe: document.getElementById('ef-farbe-'+id).value||null }) })
+    // Station-Felder speichern
+    await sb(`stationen?id=eq.${id}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({
+      kundenname: document.getElementById('ef-kunde-'+id).value||null,
+      standort: document.getElementById('ef-standort-'+id).value||null,
+      zoho_ticket_id: document.getElementById('ef-tid-'+id).value||null,
+      zoho_ticket_url: document.getElementById('ef-turl-'+id).value||null,
+      faelligkeit: document.getElementById('ef-date-'+id).value||null,
+      prioritaet_farbe: document.getElementById('ef-farbe-'+id).value||null,
+      notizen: document.getElementById('ef-notes-'+id).value||null
+    })})
+
+    // Bestehende EVSE-IDs aktualisieren
+    const evseInputs = document.querySelectorAll(`.evse-input-${id}:not(.evse-new)`)
+    for (const inp of evseInputs) {
+      const lpId = inp.dataset.lpid
+      if (lpId) await sb(`ladepunkte?id=eq.${lpId}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({ evse_id: inp.value||null }) })
+    }
+
+    // Neue EVSE-IDs hinzufügen
+    const newEvse = document.querySelectorAll(`.evse-input-${id}.evse-new`)
+    for (const inp of newEvse) {
+      if (inp.value.trim()) await sb('ladepunkte', { method:'POST', body: JSON.stringify({ station_id: id, evse_id: inp.value.trim(), prioritaet: null }) })
+    }
+
     loadStationen()
   } catch(e) { alert('Fehler: '+e.message) }
 }
