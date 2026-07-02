@@ -395,7 +395,8 @@ async function sucheAlleTabs() {
           <div style="display:flex;align-items:center;gap:12px;margin-top:3px;flex-wrap:wrap">
             ${s.standort?`<span style="font-size:12px;color:#888">📍 ${s.standort}</span>`:s.bezeichnung?`<span style="font-size:12px;color:#888">${s.bezeichnung}</span>`:''}
             <span style="font-size:11px;color:#aaa;font-family:monospace">${s.interne_id}</span>
-            ${faelligStr?(()=>{
+            ${(()=>{const sorted=(s.kommentare||[]).sort((a,b)=>new Date(b.erstellt_am)-new Date(a.erstellt_am));const k=sorted[0];return k?`<span style="font-size:11px;color:var(--text2);font-style:italic;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${k.text}">${k.text}</span>`:''})()}
+      ${faelligStr?(()=>{
         const heute = new Date(); heute.setHours(0,0,0,0)
         const faellig = new Date(s.faelligkeit+'T00:00:00')
         const diffTage = Math.ceil((faellig-heute)/(1000*60*60*24))
@@ -413,15 +414,44 @@ async function sucheAlleTabs() {
   }
 }
 
+async function addKommentar(stationId) {
+  const input = document.getElementById('dp-kommentar-input')
+  const text = input ? input.value.trim() : ''
+  if (!text) return
+  try {
+    await sb('kommentare', { method:'POST', body: JSON.stringify({ station_id: stationId, text }) })
+    input.value = ''
+    await loadStationen()
+    const updated = stationen.find(x => x.id === stationId)
+    if (updated) openDetail(stationId)
+  } catch(e) { alert('Fehler: '+e.message) }
+}
+
+async function setRouterOnline(stationId, value) {
+  try {
+    await sb(`stationen?id=eq.${stationId}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({ router_online: value }) })
+    await loadStationen()
+    openDetail(stationId)
+  } catch(e) { alert('Fehler: '+e.message) }
+}
+
+async function setUmfang(stationId, value) {
+  try {
+    await sb(`stationen?id=eq.${stationId}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({ betroffener_umfang: value||null }) })
+    await loadStationen()
+    openDetail(stationId)
+  } catch(e) { alert('Fehler: '+e.message) }
+}
+
 async function loadStationen() {
   document.getElementById('list').innerHTML = '<p style="color:#999;padding:20px">Lade…</p>'
   try {
     let q
-    if (tab === 'offline')       q = 'stationen?meldungstyp=eq.offline&irrelevant=eq.false&erledigt=eq.false&select=*,ladepunkte(*)&order=erstellt_am.desc'
-    else if (tab === 'stoerung') q = 'stationen?meldungstyp=eq.stoerung&irrelevant=eq.false&erledigt=eq.false&select=*,ladepunkte(*)&order=erstellt_am.desc'
-    else if (tab === 'erl-offline')   q = 'stationen?meldungstyp=eq.offline&erledigt=eq.true&select=*,ladepunkte(*)&order=erstellt_am.desc'
-    else if (tab === 'erl-stoerung')  q = 'stationen?meldungstyp=eq.stoerung&erledigt=eq.true&select=*,ladepunkte(*)&order=erstellt_am.desc'
-    else if (tab === 'irr-offline')   q = 'stationen?meldungstyp=eq.offline&irrelevant=eq.true&erledigt=eq.false&select=*,ladepunkte(*)&order=erstellt_am.desc'
+    if (tab === 'offline')       q = 'stationen?meldungstyp=eq.offline&irrelevant=eq.false&erledigt=eq.false&select=*,ladepunkte(*),kommentare(*)&order=erstellt_am.desc'
+    else if (tab === 'stoerung') q = 'stationen?meldungstyp=eq.stoerung&irrelevant=eq.false&erledigt=eq.false&select=*,ladepunkte(*),kommentare(*)&order=erstellt_am.desc'
+    else if (tab === 'erl-offline')   q = 'stationen?meldungstyp=eq.offline&erledigt=eq.true&select=*,ladepunkte(*),kommentare(*)&order=erstellt_am.desc'
+    else if (tab === 'erl-stoerung')  q = 'stationen?meldungstyp=eq.stoerung&erledigt=eq.true&select=*,ladepunkte(*),kommentare(*)&order=erstellt_am.desc'
+    else if (tab === 'irr-offline')   q = 'stationen?meldungstyp=eq.offline&irrelevant=eq.true&erledigt=eq.false&select=*,ladepunkte(*),kommentare(*)&order=erstellt_am.desc'
     else                              q = 'stationen?meldungstyp=eq.stoerung&irrelevant=eq.true&erledigt=eq.false&select=*,ladepunkte(*)&order=erstellt_am.desc'
     stationen = await sb(q) || []
     await updateCounts()
@@ -607,6 +637,27 @@ function openDetail(id) {
       ${s.prioritaet_farbe?`<div style="font-size:12px;color:var(--text2)">Farbcode: ${s.prioritaet_farbe==='rot'?'🔴 Rot':s.prioritaet_farbe==='gelb'?'🟡 Warten auf Kunden':'🟢 Grün'}</div>`:''}
     </div>
     <div class="detail-section">
+      <div class="detail-section-title">Betrieb</div>
+      <div class="detail-field">
+        <div class="detail-label">Router online</div>
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <button class="btn btn-sm ${s.router_online===true?'btn-green':'btn-secondary'}" onclick="setRouterOnline('${s.id}',true)">🟢 Online</button>
+          <button class="btn btn-sm ${s.router_online===false?'btn-red':'btn-secondary'}" onclick="setRouterOnline('${s.id}',false)">🔴 Offline</button>
+          <button class="btn btn-sm btn-secondary" onclick="setRouterOnline('${s.id}',null)">– Unbekannt</button>
+        </div>
+      </div>
+      <div class="detail-field" style="margin-top:10px">
+        <div class="detail-label">Betroffener Umfang</div>
+        <select id="dp-umfang-${s.id}" onchange="setUmfang('${s.id}',this.value)" style="width:100%;padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif;background:var(--bg2);margin-top:4px">
+          <option value="">– Nicht angegeben</option>
+          <option value="Alle Stationen am Standort betroffen" ${s.betroffener_umfang==='Alle Stationen am Standort betroffen'?'selected':''}>Alle Stationen am Standort betroffen</option>
+          <option value="Alle Stationen in Ladegruppe betroffen" ${s.betroffener_umfang==='Alle Stationen in Ladegruppe betroffen'?'selected':''}>Alle Stationen in Ladegruppe betroffen</option>
+          <option value="Gesamte Wallbox (ggf. 2 LP) betroffen" ${s.betroffener_umfang==='Gesamte Wallbox (ggf. 2 LP) betroffen'?'selected':''}>Gesamte Wallbox (ggf. 2 LP) betroffen</option>
+          <option value="Einzelner LP betroffen" ${s.betroffener_umfang==='Einzelner LP betroffen'?'selected':''}>Einzelner LP betroffen</option>
+        </select>
+      </div>
+    </div>
+    <div class="detail-section">
       <div class="detail-section-title">Details</div>
       <div class="detail-field"><div class="detail-label">Dashboardname</div><div class="detail-value">${s.kundenname||'–'}</div></div>
       <div class="detail-field"><div class="detail-label">Standort</div><div class="detail-value">${s.standort||'–'}</div></div>
@@ -622,6 +673,23 @@ function openDetail(id) {
     </div>
     ${isErl&&s.loesung?`<div class="detail-section"><div class="detail-section-title">Lösung</div><div class="info-box info-box-green">${s.loesung}</div></div>`:''}
     ${isIrr&&s.irrelevant_grund?`<div class="detail-section"><div class="detail-section-title">Grund</div><div class="info-box info-box-gray">${s.irrelevant_grund}</div></div>`:''}
+    <div class="detail-section">
+      <div class="detail-section-title">Verlauf & Kommentare</div>
+      <div style="display:flex;gap:6px;margin-bottom:12px">
+        <input id="dp-kommentar-input" placeholder="Neuer Kommentar…" style="flex:1;padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif;background:var(--bg2)" onkeydown="if(event.key==='Enter')addKommentar('${s.id}')">
+        <button class="btn btn-primary btn-sm" onclick="addKommentar('${s.id}')">+ Hinzufügen</button>
+      </div>
+      <div id="dp-kommentare-list">
+        ${(s.kommentare||[]).sort((a,b)=>new Date(b.erstellt_am)-new Date(a.erstellt_am)).map(k=>{
+          const dt = new Date(k.erstellt_am)
+          const dstr = dt.toLocaleDateString('de-DE') + ' ' + dt.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})
+          return `<div style="border-left:2px solid var(--border2);padding:6px 10px;margin-bottom:8px">
+            <div style="font-size:11px;color:var(--text3);margin-bottom:3px">${dstr}</div>
+            <div style="font-size:13px;color:var(--text)">${k.text}</div>
+          </div>`
+        }).join('') || '<div style="color:var(--text3);font-size:13px">Noch keine Kommentare</div>'}
+      </div>
+    </div>
     <div class="detail-section" id="dp-edit-section" style="display:none">
       <div class="detail-section-title">Bearbeiten</div>
       <div class="edit-form">
