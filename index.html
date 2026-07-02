@@ -463,7 +463,11 @@ async function doImport() {
           <span class="badge ${s.meldungstyp==='offline'?'badge-offline':'badge-stoerung'}" style="font-size:10px">${s.meldungstyp==='offline'?'Offline':'Störung'}</span>
         </div>`).join('')}
       </div>
-      <button class="btn btn-green btn-sm" onclick="markiereAusgewaehltErledigt()">✓ Ausgewählte als erledigt markieren</button>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn btn-green btn-sm" onclick="markiereAusgewaehltErledigt()">✓ Ausgewählte als erledigt markieren</button>
+        <button class="btn btn-secondary btn-sm" onclick="document.querySelectorAll('.rueckwaerts-check').forEach(cb=>cb.checked=false)">Alles abwählen</button>
+        <button class="btn btn-secondary btn-sm" onclick="document.querySelectorAll('.rueckwaerts-check').forEach(cb=>cb.checked=true)">Alles auswählen</button>
+      </div>
     </div>` : '<div style="margin-top:12px;color:#16a34a;font-size:13px">✓ Alle aktiven Stationen sind noch im Export</div>'}
   `
   document.getElementById('mfoot').innerHTML=`<button class="btn btn-primary" onclick="closeImport();loadStationen()">Fertig</button>`
