@@ -608,7 +608,7 @@ function openDetail(id) {
     </div>
     <div class="detail-section">
       <div class="detail-section-title">Details</div>
-      <div class="detail-field"><div class="detail-label">Kundenname</div><div class="detail-value">${s.kundenname||'–'}</div></div>
+      <div class="detail-field"><div class="detail-label">Dashboardname</div><div class="detail-value">${s.kundenname||'–'}</div></div>
       <div class="detail-field"><div class="detail-label">Standort</div><div class="detail-value">${s.standort||'–'}</div></div>
       <div class="detail-field"><div class="detail-label">Bezeichnung</div><div class="detail-value mono">${s.bezeichnung||'–'}</div></div>
       <div class="detail-field"><div class="detail-label">Erstellt am</div><div class="detail-value">${datum}</div></div>
@@ -625,7 +625,7 @@ function openDetail(id) {
     <div class="detail-section" id="dp-edit-section" style="display:none">
       <div class="detail-section-title">Bearbeiten</div>
       <div class="edit-form">
-        <div class="detail-label">Kundenname</div>
+        <div class="detail-label">Dashboardname</div>
         <input id="ef-kunde-${s.id}" value="${s.kundenname||''}">
         <div class="detail-label">Standort</div>
         <input id="ef-standort-${s.id}" value="${s.standort||''}">
