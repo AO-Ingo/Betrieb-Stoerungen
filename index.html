@@ -547,17 +547,18 @@ async function loadBanner() {
   try {
     const heute = new Date().toISOString().split('T')[0]
     const banner = await sb(`banner?or=(ablauf.is.null,ablauf.gte.${heute})&order=erstellt_am.asc`) || []
+    alleBanner = banner
     const bar = document.getElementById('banner-bar')
     if (!bar) return
 
     const icons = { gelb: '⚠', rot: '🔴', gruen: '✅', blau: '📅' }
     bar.innerHTML = banner.map(b => {
       const ablaufStr = b.ablauf ? ` · bis ${new Date(b.ablauf+'T00:00:00').toLocaleDateString('de-DE')}` : ''
-      return `<div class="banner-item ${b.farbe}">
+      return `<div class="banner-item ${b.farbe}" id="banner-${b.id}">
         <span>${icons[b.farbe]||'⚠'}</span>
         <span class="banner-text">${b.text}</span>
         <span class="banner-ablauf">${ablaufStr}</span>
-        <button class="banner-close" onclick="editBanner('${b.id}','${b.text.replace(/'/g,\"\\'\")}','${b.farbe}','${b.ablauf||''}')" title="Bearbeiten">✏</button>
+        <button class="banner-close" onclick="editBannerById('${b.id}')" title="Bearbeiten">✏</button>
         <button class="banner-close" onclick="loescheBanner('${b.id}')" title="Banner entfernen">✕</button>
       </div>`
     }).join('')
@@ -579,13 +580,16 @@ function closeBannerModal() {
 }
 
 let editBannerId = null
+let alleBanner = []
 
-function editBanner(id, text, farbe, ablauf) {
+function editBannerById(id) {
+  const b = alleBanner.find(x => x.id === id)
+  if (!b) return
   editBannerId = id
   document.getElementById('banner-modal').classList.add('open')
-  document.getElementById('banner-text').value = text
-  document.getElementById('banner-farbe').value = farbe
-  document.getElementById('banner-ablauf').value = ablauf
+  document.getElementById('banner-text').value = b.text
+  document.getElementById('banner-farbe').value = b.farbe
+  document.getElementById('banner-ablauf').value = b.ablauf || ''
   document.querySelector('#banner-modal .modal-header h2').textContent = 'Banner bearbeiten'
 }
 
