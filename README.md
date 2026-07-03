@@ -39,4 +39,4 @@ Siehe `supabase-schema.sql`
 - 🔗 Zoho Desk Ticket-Verknüpfung
 - 🔍 Volltext-Suche
 
-<!-- build trigger 2 -->
+<!-- build trigger 3 -->
