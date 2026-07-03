@@ -459,8 +459,8 @@ async function erstelleTicket(stationId, typ) {
   }
 
   const betreff = {
-    router: `Router offline – ${s.standort||s.kundenname}`,
-    station: `Ladestation offline – ${s.standort||s.kundenname}`
+    router: `${s.kundenname} ${standortName} - Router offline`,
+    station: `${s.kundenname} ${standortName} - Ladestation offline`
   }
 
   const payload = {
