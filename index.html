@@ -565,8 +565,8 @@ function cardHTML(s) {
   const badgeText = s.meldungstyp==='offline' ? '⚡ Offline' : '⚠ Störung'
   const tb = s.zoho_ticket_id
     ? s.zoho_ticket_url
-      ? `<a href="${s.zoho_ticket_url}" target="_blank" onclick="event.stopPropagation()" class="badge badge-ticket" style="text-decoration:none">🎫 ${s.zoho_ticket_id}</a>`
-      : `<span class="badge badge-ticket">🎫 ${s.zoho_ticket_id}</span>`
+      ? `<a href="${s.zoho_ticket_url}" target="_blank" onclick="event.stopPropagation()" class="badge badge-ticket" style="text-decoration:none">🎫 #${s.zoho_ticket_id}</a>`
+      : `<span class="badge badge-ticket">🎫 #${s.zoho_ticket_id}</span>`
     : ''
   const tags = (s.ladepunkte||[]).map(lp=>`<span class="evse-tag">${lp.evse_id||'–'}</span>`).join('')
   const faelligStr = s.faelligkeit ? new Date(s.faelligkeit+'T00:00:00').toLocaleDateString('de-DE') : null
