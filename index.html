@@ -492,6 +492,11 @@ async function erstelleTicket(stationId, typ) {
     alert('Fehler: ' + e.message)
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = typ==='router'?'🔴 Ticket: Router offline':'⚡ Ticket: Station offline' }
+    // Warte 3 Sekunden damit Make Zeit hat Supabase zu updaten, dann neu laden
+    setTimeout(async () => {
+      await loadStationen()
+      openDetail(stationId)
+    }, 3000)
   }
 }
 
