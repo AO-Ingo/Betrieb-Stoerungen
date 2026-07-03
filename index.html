@@ -447,6 +447,52 @@ async function setUmfang(stationId, value) {
   } catch(e) { alert('Fehler: '+e.message) }
 }
 
+async function erstelleTicket(stationId, typ) {
+  const s = stationen.find(x => x.id === stationId)
+  if (!s) return
+
+  const texte = {
+    router: `Sehr geehrte Damen und Herren,\n\ndie Ladestation(en) an Ihrem Standort "${s.standort||s.kundenname}" sind aktuell offline. Der Router ist ebenfalls nicht erreichbar.\n\nBitte starten Sie den Router neu. Nach dem Neustart sollten die Ladestationen automatisch wieder online gehen.\n\nBitte geben Sie uns kurze Rückmeldung sobald der Router neu gestartet wurde.\n\nBetroffene EVSE-IDs: ${(s.ladepunkte||[]).map(lp=>lp.evse_id||'–').join(', ')}`,
+    station: `Sehr geehrte Damen und Herren,\n\ndie Ladestation(en) an Ihrem Standort "${s.standort||s.kundenname}" sind aktuell offline.\n\nBitte starten Sie die betroffene(n) Ladestation(en) neu (Sicherung aus- und wieder einschalten).\n\nBitte geben Sie uns kurze Rückmeldung sobald die Stationen neu gestartet wurden.\n\nBetroffene EVSE-IDs: ${(s.ladepunkte||[]).map(lp=>lp.evse_id||'–').join(', ')}`
+  }
+
+  const betreff = {
+    router: `Router offline – ${s.standort||s.kundenname}`,
+    station: `Ladestation offline – ${s.standort||s.kundenname}`
+  }
+
+  const payload = {
+    typ,
+    station_id: s.id,
+    dashboard: s.kundenname,
+    standort: s.standort,
+    interne_id: s.interne_id,
+    evse_ids: (s.ladepunkte||[]).map(lp=>lp.evse_id||'–').join(', '),
+    betreff: betreff[typ],
+    text: texte[typ]
+  }
+
+  const btn = document.getElementById('ticket-btn-'+typ)
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Wird erstellt…' }
+
+  try {
+    const res = await fetch('https://hook.eu2.make.com/9tv9rjga4ygwkz1ycim935rro6xwovov', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+    if (res.ok) {
+      alert('✓ Ticket wurde in Zoho Desk erstellt!')
+    } else {
+      alert('Fehler beim Erstellen: ' + res.status)
+    }
+  } catch(e) {
+    alert('Fehler: ' + e.message)
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = typ==='router'?'🔴 Ticket: Router offline':'⚡ Ticket: Station offline' }
+  }
+}
+
 async function loadStationen() {
   document.getElementById('list').innerHTML = '<p style="color:#999;padding:20px">Lade…</p>'
   try {
@@ -744,6 +790,12 @@ function openDetail(id) {
   }
   if (isIrr) footer += `<button class="btn btn-success btn-sm" onclick="reaktivieren('${s.id}')">↩ Reaktivieren</button>`
   footer += `<button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="loeschen('${s.id}')">🗑</button>`
+  if (isAktiv && s.meldungstyp === 'offline') {
+    footer += `<div style="width:100%;border-top:1px solid var(--border);margin-top:8px;padding-top:8px;display:flex;gap:6px;flex-wrap:wrap">`
+    footer += `<button id="ticket-btn-router" class="btn btn-sm btn-secondary" onclick="erstelleTicket('${s.id}','router')">🔴 Ticket: Router offline</button>`
+    footer += `<button id="ticket-btn-station" class="btn btn-sm btn-secondary" onclick="erstelleTicket('${s.id}','station')">⚡ Ticket: Station offline</button>`
+    footer += `</div>`
+  }
   document.getElementById('dp-footer').innerHTML = footer
 
   document.getElementById('detail-panel').classList.add('open')
