@@ -557,6 +557,7 @@ async function loadBanner() {
         <span>${icons[b.farbe]||'⚠'}</span>
         <span class="banner-text">${b.text}</span>
         <span class="banner-ablauf">${ablaufStr}</span>
+        <button class="banner-close" onclick="editBanner('${b.id}','${b.text.replace(/'/g,\"\\'\")}','${b.farbe}','${b.ablauf||''}')" title="Bearbeiten">✏</button>
         <button class="banner-close" onclick="loescheBanner('${b.id}')" title="Banner entfernen">✕</button>
       </div>`
     }).join('')
@@ -566,13 +567,26 @@ async function loadBanner() {
 }
 
 function openBannerModal() {
+  editBannerId = null
   document.getElementById('banner-modal').classList.add('open')
   document.getElementById('banner-text').value = ''
   document.getElementById('banner-ablauf').value = ''
+  document.querySelector('#banner-modal .modal-header h2').textContent = 'Banner hinzufügen'
 }
 
 function closeBannerModal() {
   document.getElementById('banner-modal').classList.remove('open')
+}
+
+let editBannerId = null
+
+function editBanner(id, text, farbe, ablauf) {
+  editBannerId = id
+  document.getElementById('banner-modal').classList.add('open')
+  document.getElementById('banner-text').value = text
+  document.getElementById('banner-farbe').value = farbe
+  document.getElementById('banner-ablauf').value = ablauf
+  document.querySelector('#banner-modal .modal-header h2').textContent = 'Banner bearbeiten'
 }
 
 async function saveBanner() {
@@ -581,7 +595,11 @@ async function saveBanner() {
   const farbe = document.getElementById('banner-farbe').value
   const ablauf = document.getElementById('banner-ablauf').value || null
   try {
-    await sb('banner', { method: 'POST', body: JSON.stringify({ text, farbe, ablauf }) })
+    if (editBannerId) {
+      await sb(`banner?id=eq.${editBannerId}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ text, farbe, ablauf }) })
+    } else {
+      await sb('banner', { method: 'POST', body: JSON.stringify({ text, farbe, ablauf }) })
+    }
     closeBannerModal()
     loadBanner()
   } catch(e) { alert('Fehler: ' + e.message) }
