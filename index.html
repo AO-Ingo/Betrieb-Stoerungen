@@ -551,14 +551,14 @@ async function loadBanner() {
     const bar = document.getElementById('banner-bar')
     if (!bar) return
 
-    const icons = { gelb: '⚠', rot: '🔴', gruen: '✅', blau: '📅' }
+    const icons = { gelb: '&#9888;', rot: '&#128308;', gruen: '&#9989;', blau: '&#128197;' }
     bar.innerHTML = banner.map(b => {
       const ablaufStr = b.ablauf ? ` · bis ${new Date(b.ablauf+'T00:00:00').toLocaleDateString('de-DE')}` : ''
       return `<div class="banner-item ${b.farbe}" id="banner-${b.id}">
         <span>${icons[b.farbe]||'⚠'}</span>
         <span class="banner-text">${b.text}</span>
         <span class="banner-ablauf">${ablaufStr}</span>
-        <button class="banner-close" onclick="editBannerById('${b.id}')" title="Bearbeiten">✏</button>
+        <button class="banner-close" onclick="editBannerById('${b.id}')" title="Bearbeiten">✎</button>
         <button class="banner-close" onclick="loescheBanner('${b.id}')" title="Banner entfernen">✕</button>
       </div>`
     }).join('')
