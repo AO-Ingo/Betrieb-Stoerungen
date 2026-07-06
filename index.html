@@ -1431,7 +1431,10 @@ async function doImport() {
         if (ns&&ns[0]) { const sid=ns[0].id; for (const p of s.ladepunkte) await sb('ladepunkte',{method:'POST',body:JSON.stringify({station_id:sid,evse_id:p.evse_id,prioritaet:p.prioritaet})}) }
         neu++
       }
-    } catch(e) { fehler.push(s.interne_id+': '+e.message) }
+    } catch(e) {
+      if (e.message && e.message.includes('23505')) { dup++ }
+      else { fehler.push(s.interne_id+': '+e.message) }
+    }
   }
   // Rückwärtsprüfung: aktive Stationen die nicht im Import sind
   let nichtMehrImport = []
