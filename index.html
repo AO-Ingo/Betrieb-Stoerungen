@@ -828,6 +828,32 @@ const MITARBEITER_LIST = [
   { name: 'Ferdinand Busalt', initialen: 'FB' },
 ]
 
+async function setGruppeMitarbeiter(ids) {
+  const overlay = document.createElement('div')
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center'
+  overlay.innerHTML = `<div style="background:#fff;border-radius:10px;padding:20px;min-width:220px;box-shadow:0 8px 30px rgba(0,0,0,0.2)">
+    <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:#111">Mitarbeiter für Gruppe</div>
+    ${MITARBEITER_LIST.map(m => `<button onclick="chooseGruppeMitarbeiter(${JSON.stringify(ids)},'${m.initialen}',this)" style="display:block;width:100%;text-align:left;padding:8px 12px;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:6px;background:#fff;cursor:pointer;font-size:13px;font-family:'DM Sans',sans-serif">
+      <span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#e8581a;color:#fff;font-size:10px;font-weight:700;margin-right:8px">${m.initialen}</span>
+      ${m.name}
+    </button>`).join('')}
+    <button onclick="chooseGruppeMitarbeiter(${JSON.stringify(ids)},null,this)" style="display:block;width:100%;text-align:left;padding:8px 12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;cursor:pointer;font-size:13px;font-family:'DM Sans',sans-serif;color:#6b7280">
+      – Niemand zugewiesen
+    </button>
+    <button onclick="this.closest('[style*=fixed]').remove()" style="margin-top:8px;width:100%;padding:6px;border:none;background:none;cursor:pointer;font-size:12px;color:#9ca3af">Abbrechen</button>
+  </div>`
+  document.body.appendChild(overlay)
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove() })
+}
+
+async function chooseGruppeMitarbeiter(ids, initialen, el) {
+  document.querySelector('[style*="position:fixed"][style*="z-index:200"]')?.remove()
+  for (const id of ids) {
+    await sb(`stationen?id=eq.${id}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ mitarbeiter: initialen }) })
+  }
+  await loadStationen()
+}
+
 async function setMitarbeiter(id) {
   const s = stationen.find(x => x.id === id)
   const aktuell = s ? s.mitarbeiter || '' : ''
@@ -970,6 +996,17 @@ function renderList() {
               ${grpKVorschau}
             </div>
             <button class="btn btn-sm btn-secondary" style="font-size:11px;padding:2px 8px;flex-shrink:0" onclick="event.stopPropagation();gruppeAufheben('${gruppeId}',${JSON.stringify(gruppierte.map(s=>s.id))})" title="Gruppe aufheben">↗ Trennen</button>
+              ${(()=>{
+                const mas = [...new Set(gruppierte.map(s=>s.mitarbeiter).filter(Boolean))]
+                const ids = gruppierte.map(s=>s.id)
+                if (mas.length === 1) {
+                  return `<span class="mitarbeiter-badge" onclick="event.stopPropagation();setGruppeMitarbeiter(${JSON.stringify(ids)})" title="${mas[0]}">${mas[0]}</span>`
+                } else if (mas.length > 1) {
+                  return `<span class="mitarbeiter-badge" style="background:var(--text3)" onclick="event.stopPropagation();setGruppeMitarbeiter(${JSON.stringify(ids)})" title="Verschiedene Mitarbeiter">?</span>`
+                } else {
+                  return `<span class="mitarbeiter-badge leer" onclick="event.stopPropagation();setGruppeMitarbeiter(${JSON.stringify(ids)})" title="Mitarbeiter zuweisen">+</span>`
+                }
+              })()}
           </div>
         </div>
         <div class="gruppe-cards" id="${gruppeId}">
