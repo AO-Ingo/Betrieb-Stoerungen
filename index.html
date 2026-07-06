@@ -232,6 +232,18 @@ textarea.raw { width: 100%; height: 200px; font-family: 'DM Mono', monospace; fo
 .error-box { background: var(--red-bg); color: var(--red-txt); padding: 10px 14px; border-radius: var(--radius); font-size: 13px; margin-top: 8px; }
 .hint { font-size: 13px; color: var(--text2); margin-bottom: 12px; }
 
+/* GRUPPEN */
+.gruppe { margin-bottom: 8px; }
+.gruppe-header { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--radius); cursor: pointer; font-size: 13px; font-weight: 500; color: var(--text2); user-select: none; }
+.gruppe-header:hover { background: var(--bg3); }
+.gruppe-icon { font-size: 11px; transition: transform 0.15s; }
+.gruppe-icon.open { transform: rotate(90deg); }
+.gruppe-standort { flex: 1; }
+.gruppe-count { font-size: 11px; color: var(--text3); }
+.gruppe-cards { display: none; padding-left: 12px; border-left: 2px solid var(--border2); margin-top: 4px; }
+.gruppe-cards.open { display: block; }
+.gruppe-actions { display: flex; gap: 4px; }
+
 /* MEHRFACHAUSWAHL */
 .card-checkbox { position: absolute; top: 10px; left: 10px; width: 16px; height: 16px; opacity: 0; cursor: pointer; transition: opacity 0.15s; z-index: 2; }
 .card:hover .card-checkbox, .card.checked .card-checkbox { opacity: 1; }
@@ -797,7 +809,68 @@ function renderList() {
     .filter(s => !q || [s.kundenname,s.interne_id,s.standort,s.bezeichnung].some(v=>(v||'').toLowerCase().includes(q)) || (s.ladepunkte||[]).some(lp=>(lp.evse_id||'').toLowerCase().includes(q)))
     .sort((a,b) => (farbOrder[a.prioritaet_farbe] ?? 3) - (farbOrder[b.prioritaet_farbe] ?? 3))
   if (!f.length) { document.getElementById('list').innerHTML = `<div class="empty"><div style="font-size:40px">○</div><div>Keine Einträge</div></div>`; return }
-  document.getElementById('list').innerHTML = f.map(cardHTML).join('')
+
+  // Gruppiere nach Dashboard + Standort (nur wenn beide gleich und > 1 Karte)
+  const gruppenMap = new Map()
+  const einzeln = []
+
+  for (const s of f) {
+    const key = (s.kundenname||'') + '|||' + (s.standort||'')
+    if (!gruppenMap.has(key)) gruppenMap.set(key, [])
+    gruppenMap.get(key).push(s)
+  }
+
+  let html = ''
+  for (const [key, karten] of gruppenMap) {
+    // Karten die mit gruppe_id getrennt wurden, separat anzeigen
+    const getrennte = karten.filter(s => s.gruppe_id === 'solo')
+    const gruppierte = karten.filter(s => s.gruppe_id !== 'solo')
+
+    // Einzeln getrennte Karten
+    for (const s of getrennte) {
+      html += cardHTML(s)
+    }
+
+    if (gruppierte.length === 1) {
+      html += cardHTML(gruppierte[0])
+    } else if (gruppierte.length > 1) {
+      const standort = gruppierte[0].standort || gruppierte[0].kundenname || '–'
+      const dashboard = gruppierte[0].kundenname || '–'
+      const gruppeId = 'grp-' + key.replace(/[^a-zA-Z0-9]/g, '-')
+      const farben = gruppierte.map(s => s.prioritaet_farbe).filter(Boolean)
+      const maxFarbe = farben.includes('rot') ? '🔴' : farben.includes('gelb') ? '🟡' : farben.includes('gruen') ? '🟢' : ''
+
+      html += `<div class="gruppe">
+        <div class="gruppe-header" onclick="toggleGruppe('${gruppeId}')">
+          <span class="gruppe-icon" id="icon-${gruppeId}">▶</span>
+          <span class="gruppe-standort">${maxFarbe} <strong>${dashboard}</strong> · ${standort}</span>
+          <span class="gruppe-count">${gruppierte.length} Stationen</span>
+          <div class="gruppe-actions" onclick="event.stopPropagation()">
+            <button class="btn btn-sm btn-secondary" style="font-size:11px;padding:3px 8px" onclick="gruppeAufheben('${gruppeId}',${JSON.stringify(gruppierte.map(s=>s.id))})" title="Gruppe aufheben">↗ Trennen</button>
+          </div>
+        </div>
+        <div class="gruppe-cards" id="${gruppeId}">
+          ${gruppierte.map(cardHTML).join('')}
+        </div>
+      </div>`
+    }
+  }
+
+  document.getElementById('list').innerHTML = html
+}
+
+function toggleGruppe(id) {
+  const cards = document.getElementById(id)
+  const icon = document.getElementById('icon-' + id)
+  if (cards) cards.classList.toggle('open')
+  if (icon) icon.classList.toggle('open')
+}
+
+async function gruppeAufheben(gruppeId, ids) {
+  for (const id of ids) {
+    await sb(`stationen?id=eq.${id}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ gruppe_id: 'solo' }) })
+  }
+  await loadStationen()
 }
 
 function cardHTML(s) {
