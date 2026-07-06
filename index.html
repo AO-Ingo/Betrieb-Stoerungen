@@ -939,13 +939,37 @@ function renderList() {
       const farben = gruppierte.map(s => s.prioritaet_farbe).filter(Boolean)
       const maxFarbe = farben.includes('rot') ? '🔴' : farben.includes('gelb') ? '🟡' : farben.includes('gruen') ? '🟢' : ''
 
+      // Farbklasse der Gruppe = stärkste Farbe
+      const grpFarbe = farben.includes('rot') ? ' rot' : farben.includes('gelb') ? ' gelb' : farben.includes('gruen') ? ' gruen' : ''
+      // Badge der Gruppe
+      const grpBadgeClass = gruppierte.some(s=>s.meldungstyp==='offline') ? 'badge-offline' : 'badge-stoerung'
+      const grpBadgeText = gruppierte.some(s=>s.meldungstyp==='offline') ? '⚡ Offline' : '⚠ Störung'
+      // Router-Status
+      const grpRouter = gruppierte.some(s=>s.router_online===true) ? '<span style="color:#16a34a;font-size:12px">🟢</span>' : gruppierte.some(s=>s.router_online===false) ? '<span style="color:#dc2626;font-size:12px">🔴</span>' : ''
+      // Neuester Kommentar aus allen Karten der Gruppe
+      const grpKommentare = gruppierte.flatMap(s=>s.kommentare||[]).sort((a,b)=>new Date(b.erstellt_am)-new Date(a.erstellt_am))
+      const grpNeusterK = grpKommentare[0]
+      const grpKVorschau = grpNeusterK ? `<span style="font-size:11px;color:var(--text2);background:var(--bg2);border-left:2px solid var(--orange);padding:1px 6px;border-radius:0 3px 3px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:250px">💬 ${grpNeusterK.text}</span>` : ''
+
       html += `<div class="gruppe">
-        <div class="gruppe-header" onclick="toggleGruppe('${gruppeId}')">
-          <span class="gruppe-icon" id="icon-${gruppeId}">▶</span>
-          <span class="gruppe-standort">${maxFarbe} <strong>${dashboard}</strong> · ${standort}</span>
-          <span class="gruppe-count">${gruppierte.length} Stationen</span>
-          <div class="gruppe-actions" onclick="event.stopPropagation()">
-            <button class="btn btn-sm btn-secondary" style="font-size:11px;padding:3px 8px" onclick="gruppeAufheben('${gruppeId}',${JSON.stringify(gruppierte.map(s=>s.id))})" title="Gruppe aufheben">↗ Trennen</button>
+        <div class="card${grpFarbe}" onclick="toggleGruppe('${gruppeId}')" style="cursor:pointer;margin-bottom:4px">
+          <div style="display:flex;align-items:center;gap:6px;justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:6px;min-width:0;flex:1;overflow:hidden">
+              <span class="badge ${grpBadgeClass}" style="flex-shrink:0">${grpBadgeText}</span>
+              <span style="font-weight:500;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${dashboard}</span>
+              <span class="badge" style="background:var(--bg3);color:var(--text2);font-size:10px">${gruppierte.length} Stationen</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+              ${grpRouter}
+              <span class="gruppe-icon" id="icon-${gruppeId}" style="color:var(--text3);font-size:11px;transition:transform 0.15s">▶</span>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:3px;gap:8px">
+            <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;overflow:hidden;flex-wrap:wrap">
+              ${standort?`<span style="font-size:11px;color:var(--text3)">📍 ${standort}</span>`:''}
+              ${grpKVorschau}
+            </div>
+            <button class="btn btn-sm btn-secondary" style="font-size:11px;padding:2px 8px;flex-shrink:0" onclick="event.stopPropagation();gruppeAufheben('${gruppeId}',${JSON.stringify(gruppierte.map(s=>s.id))})" title="Gruppe aufheben">↗ Trennen</button>
           </div>
         </div>
         <div class="gruppe-cards" id="${gruppeId}">
