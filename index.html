@@ -232,6 +232,17 @@ textarea.raw { width: 100%; height: 200px; font-family: 'DM Mono', monospace; fo
 .error-box { background: var(--red-bg); color: var(--red-txt); padding: 10px 14px; border-radius: var(--radius); font-size: 13px; margin-top: 8px; }
 .hint { font-size: 13px; color: var(--text2); margin-bottom: 12px; }
 
+/* MEHRFACHAUSWAHL */
+.card-checkbox { position: absolute; top: 10px; left: 10px; width: 16px; height: 16px; opacity: 0; cursor: pointer; transition: opacity 0.15s; z-index: 2; }
+.card:hover .card-checkbox, .card.checked .card-checkbox { opacity: 1; }
+.card { position: relative; }
+.card.checked { outline: 2px solid var(--orange); outline-offset: -1px; }
+.aktionsleiste { display: none; position: sticky; bottom: 0; background: var(--sidebar-bg); color: #fff; padding: 10px 20px; align-items: center; gap: 10px; flex-shrink: 0; z-index: 20; border-top: 2px solid var(--orange); }
+.aktionsleiste.visible { display: flex; }
+.aktionsleiste-info { font-size: 13px; font-weight: 500; flex: 1; }
+.mitarbeiter-badge { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; background: var(--orange); color: #fff; font-size: 10px; font-weight: 700; flex-shrink: 0; cursor: pointer; title: "Mitarbeiter"; }
+.mitarbeiter-badge.leer { background: var(--bg3); color: var(--text3); border: 1px dashed var(--border2); }
+
 /* BANNER */
 .banner-bar { padding: 0 20px; flex-shrink: 0; }
 .banner-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: var(--radius); margin-bottom: 6px; font-size: 13px; }
@@ -306,6 +317,13 @@ textarea.raw { width: 100%; height: 200px; font-family: 'DM Mono', monospace; fo
     <div class="list-panel" id="list-panel">
       <div id="search-all-results" style="display:none"></div>
       <div id="list"></div>
+    </div>
+    <div class="aktionsleiste" id="aktionsleiste">
+      <span class="aktionsleiste-info" id="aktionsleiste-info">0 ausgewählt</span>
+      <button class="btn btn-sm" style="background:#fff;color:#222" onclick="alleAbwaehlen()">✕ Abwählen</button>
+      <button class="btn btn-sm" style="background:#16a34a;color:#fff" onclick="ausgewaehltErledigt()">✓ Erledigt</button>
+      <button class="btn btn-sm" style="background:#6b7280;color:#fff" onclick="ausgewaehltIrrelevant()">○ Irrelevant</button>
+      <button class="btn btn-sm" style="background:#dc2626;color:#fff" onclick="ausgewaehltLoeschen()">🗑 Löschen</button>
     </div>
     <div class="detail-panel" id="detail-panel">
       <div class="detail-header" id="dp-header" style="display:none">
@@ -614,6 +632,95 @@ async function loescheBanner(id) {
   } catch(e) { alert('Fehler: ' + e.message) }
 }
 
+const selectedCards = new Set()
+
+function handleCardClick(event, id) {
+  if (event.target.type === 'checkbox') return
+  if (event.target.closest('.mitarbeiter-badge')) return
+  if (selectedCards.size > 0) {
+    toggleCard(id)
+  } else {
+    openDetail(id)
+  }
+}
+
+function toggleCard(id) {
+  const card = document.getElementById('card-' + id)
+  const chk = document.getElementById('chk-' + id)
+  if (selectedCards.has(id)) {
+    selectedCards.delete(id)
+    card.classList.remove('checked')
+    if (chk) chk.checked = false
+  } else {
+    selectedCards.add(id)
+    card.classList.add('checked')
+    if (chk) chk.checked = true
+  }
+  updateAktionsleiste()
+}
+
+function updateAktionsleiste() {
+  const bar = document.getElementById('aktionsleiste')
+  const info = document.getElementById('aktionsleiste-info')
+  if (selectedCards.size > 0) {
+    bar.classList.add('visible')
+    info.textContent = selectedCards.size + ' ausgewählt'
+  } else {
+    bar.classList.remove('visible')
+  }
+}
+
+function alleAbwaehlen() {
+  selectedCards.forEach(id => {
+    const card = document.getElementById('card-' + id)
+    const chk = document.getElementById('chk-' + id)
+    if (card) card.classList.remove('checked')
+    if (chk) chk.checked = false
+  })
+  selectedCards.clear()
+  updateAktionsleiste()
+}
+
+async function ausgewaehltErledigt() {
+  const loesung = prompt('Lösungsgrund für alle ausgewählten Stationen:', 'Nach Neustart stromlos wieder online')
+  if (loesung === null) return
+  for (const id of selectedCards) {
+    await sb(`stationen?id=eq.${id}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ erledigt: true, loesung: loesung||null }) })
+  }
+  selectedCards.clear()
+  await loadStationen()
+}
+
+async function ausgewaehltIrrelevant() {
+  const grund = prompt('Grund für alle ausgewählten Stationen:', 'Keine Betreuung')
+  if (grund === null) return
+  for (const id of selectedCards) {
+    await sb(`stationen?id=eq.${id}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ irrelevant: true, irrelevant_grund: grund||null }) })
+  }
+  selectedCards.clear()
+  await loadStationen()
+}
+
+async function ausgewaehltLoeschen() {
+  if (!confirm(selectedCards.size + ' Stationen wirklich löschen?')) return
+  for (const id of selectedCards) {
+    await sb(`ladepunkte?station_id=eq.${id}`, { method: 'DELETE', prefer: 'return=minimal' })
+    await sb(`stationen?id=eq.${id}`, { method: 'DELETE', prefer: 'return=minimal' })
+  }
+  selectedCards.clear()
+  await loadStationen()
+}
+
+async function setMitarbeiter(id) {
+  const s = stationen.find(x => x.id === id)
+  const aktuell = s ? s.mitarbeiter || '' : ''
+  const ma = prompt('Mitarbeiter (Initialen, z.B. IV):', aktuell)
+  if (ma === null) return
+  await sb(`stationen?id=eq.${id}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ mitarbeiter: ma||null }) })
+  await loadStationen()
+  if (currentStation && currentStation.id === id) openDetail(id)
+}
+
 async function loadStationen() {
   document.getElementById('list').innerHTML = '<p style="color:#999;padding:20px">Lade…</p>'
   try {
@@ -707,7 +814,12 @@ function cardHTML(s) {
     faelligHtml = `<span style="font-size:11px;color:${kleur};font-weight:${diffTage<=3?'600':'400'}">${warn}📅 ${faelligStr}</span>`
   }
 
-  return `<div class="card${farbklasse}" onclick="openDetail('${id}')" id="card-${id}">
+  const maBadge = s.mitarbeiter
+    ? `<span class="mitarbeiter-badge" onclick="event.stopPropagation();setMitarbeiter('${id}')" title="${s.mitarbeiter}">${s.mitarbeiter.substring(0,2).toUpperCase()}</span>`
+    : `<span class="mitarbeiter-badge leer" onclick="event.stopPropagation();setMitarbeiter('${id}')" title="Mitarbeiter zuweisen">+</span>`
+
+  return `<div class="card${farbklasse}${selectedCards.has('${id}')?' checked':''}" onclick="handleCardClick(event,'${id}')" id="card-${id}">
+    <input type="checkbox" class="card-checkbox" id="chk-${id}" onclick="event.stopPropagation();toggleCard('${id}')" ${selectedCards.has('${id}')?'checked':''}>
     <div style="display:flex;align-items:center;gap:6px;justify-content:space-between">
       <div style="display:flex;align-items:center;gap:6px;min-width:0;flex:1;overflow:hidden">
         <span class="badge ${badgeClass}" style="flex-shrink:0">${badgeText}</span>
@@ -725,6 +837,7 @@ function cardHTML(s) {
         ${faelligHtml}
       </div>
       <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;white-space:nowrap;flex-shrink:0">${s.interne_id}</span>
+      ${maBadge}
     </div>
   </div>`
 }
@@ -840,6 +953,8 @@ function openDetail(id) {
           <option value="gelb" ${s.prioritaet_farbe==='gelb'?'selected':''}>🟡 Warten auf Kunden</option>
           <option value="rot" ${s.prioritaet_farbe==='rot'?'selected':''}>🔴 Rot</option>
         </select>
+        <div class="detail-label">Mitarbeiter (Initialen)</div>
+        <input id="ef-ma-${s.id}" placeholder="z.B. IV" value="${s.mitarbeiter||''}">
         <div class="detail-label">Notizen</div>
         <textarea id="ef-notes-${s.id}">${s.notizen||''}</textarea>
         <div class="edit-actions">
@@ -998,7 +1113,8 @@ async function save(id) {
       zoho_ticket_url: val('ef-turl-'+id),
       faelligkeit: val('ef-date-'+id),
       prioritaet_farbe: val('ef-farbe-'+id),
-      notizen: val('ef-notes-'+id)
+      notizen: val('ef-notes-'+id),
+      mitarbeiter: val('ef-ma-'+id)
     })})
 
     // Bestehende EVSE-IDs aktualisieren
@@ -1151,10 +1267,11 @@ async function doImport() {
 
 async function markiereAusgewaehltErledigt() {
   const checkboxen = document.querySelectorAll('.rueckwaerts-check:checked')
+  const loesung = document.getElementById('rueck-loesung')?.value || 'Nach Neustart stromlos wieder online'
   for (const cb of checkboxen) {
     const id = cb.dataset.id
     try {
-      await sb(`stationen?id=eq.${id}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({ erledigt: true, loesung: 'Nicht mehr im Export – vermutlich wieder online' }) })
+      await sb(`stationen?id=eq.${id}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({ erledigt: true, loesung }) })
     } catch(e) {}
   }
   closeImport()
