@@ -591,6 +591,49 @@ async function ladeStatistik() {
     }
     const standortSorted = Object.values(standortMap).sort((a,b)=>b.lp-a.lp).slice(0,8)
 
+    // Zeitverlauf nach Kalenderwochen
+    const getKW = (dateStr) => {
+      const d = new Date(dateStr)
+      const jan4 = new Date(d.getFullYear(), 0, 4)
+      const startOfWeek = new Date(jan4)
+      startOfWeek.setDate(jan4.getDate() - ((jan4.getDay() + 6) % 7))
+      const diff = d - startOfWeek
+      const kw = Math.floor(diff / (7 * 24 * 60 * 60 * 1000)) + 1
+      return `KW${kw} ${d.getFullYear()}`
+    }
+
+    const kwMap = {}
+    for (const s of alle.filter(s=>s.erledigt||(!s.erledigt&&!s.irrelevant))) {
+      const kw = getKW(s.erstellt_am)
+      if (!kwMap[kw]) kwMap[kw] = { kw, offline: 0, stoerung: 0, sort: new Date(s.erstellt_am) }
+      const lp = (s.ladepunkte||[]).length || 1
+      if (s.meldungstyp === 'offline') kwMap[kw].offline += lp
+      else kwMap[kw].stoerung += lp
+    }
+
+    const kwSorted = Object.values(kwMap).sort((a,b) => a.sort - b.sort).slice(-16)
+    const maxKW = Math.max(...kwSorted.map(k => k.offline + k.stoerung), 1)
+    const kwBarH = 120
+
+    const zeitverlaufHtml = kwSorted.length ? `
+      <div style="display:flex;align-items:flex-end;gap:6px;height:${kwBarH+30}px;padding-bottom:24px;overflow-x:auto">
+        ${kwSorted.map(k => {
+          const offH = Math.round(k.offline / maxKW * kwBarH)
+          const stH = Math.round(k.stoerung / maxKW * kwBarH)
+          return `<div style="display:flex;flex-direction:column;align-items:center;flex:1;min-width:40px">
+            <div style="display:flex;align-items:flex-end;gap:2px;height:${kwBarH}px">
+              ${k.offline ? `<div style="width:14px;height:${offH}px;background:#ef4444;border-radius:3px 3px 0 0" title="Offline: ${k.offline} LP"></div>` : '<div style="width:14px"></div>'}
+              ${k.stoerung ? `<div style="width:14px;height:${stH}px;background:#f59e0b;border-radius:3px 3px 0 0" title="Störung: ${k.stoerung} LP"></div>` : '<div style="width:14px"></div>'}
+            </div>
+            <div style="font-size:9px;color:var(--text3);margin-top:4px;text-align:center;white-space:nowrap">${k.kw}</div>
+          </div>`
+        }).join('')}
+      </div>
+      <div style="display:flex;gap:12px;font-size:12px;color:var(--text2)">
+        <span><span style="display:inline-block;width:12px;height:12px;background:#ef4444;border-radius:2px;margin-right:4px;vertical-align:middle"></span>Offline</span>
+        <span><span style="display:inline-block;width:12px;height:12px;background:#f59e0b;border-radius:2px;margin-right:4px;vertical-align:middle"></span>Störung</span>
+      </div>` : '<div style="color:var(--text3);font-size:13px">Noch keine Daten</div>'
+
     const barHtml = (val, max, color) => `<div style="height:8px;background:var(--bg3);border-radius:4px;overflow:hidden;margin-top:4px"><div style="height:100%;width:${Math.round(val/max*100)}%;background:${color};border-radius:4px"></div></div>`
     const maxL = loesungSorted[0]?.[1] || 1
     const maxW = wiederholungen[0]?.count || 1
@@ -647,6 +690,11 @@ async function ladeStatistik() {
           </div>
           ${barHtml(s.count,maxW,'#6d28d9')}
         </div>`).join('') : '<div style="color:var(--text3);font-size:13px">Keine Wiederholungsausfälle</div>'}
+      </div>
+
+      <div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-top:16px">
+        <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:16px">Zeitverlauf – Neue Ausfälle pro Kalenderwoche</div>
+        ${zeitverlaufHtml}
       </div>`
   } catch(e) {
     document.getElementById('list').innerHTML = `<div class="error-box">Fehler: ${e.message}</div>`
