@@ -739,6 +739,66 @@ async function ladeStatistik() {
   }
 }
 
+const MENTION_OPTIONEN = [
+  { kuerzel: 'IV', name: 'Ingo Vogt' },
+  { kuerzel: 'DS', name: 'Dmitrij Smolenski' },
+  { kuerzel: 'FB', name: 'Ferdinand Busalt' }
+]
+let mentionAktiv = false, mentionIndex = 0, mentionGefiltert = []
+
+function mentionAktuellesWort(input) {
+  const pos = input.selectionStart
+  const vorCursor = input.value.slice(0, pos)
+  const match = vorCursor.match(/@([a-zA-ZäöüÄÖÜ]*)$/)
+  return match ? match[1] : null
+}
+
+function mentionCheck(input) {
+  const teilwort = mentionAktuellesWort(input)
+  const dd = document.getElementById('mention-dropdown')
+  if (teilwort === null) { mentionAktiv = false; dd.style.display = 'none'; return }
+  mentionGefiltert = MENTION_OPTIONEN.filter(o => o.kuerzel.toLowerCase().startsWith(teilwort.toLowerCase()) || o.name.toLowerCase().startsWith(teilwort.toLowerCase()))
+  if (!mentionGefiltert.length) { mentionAktiv = false; dd.style.display = 'none'; return }
+  mentionAktiv = true
+  mentionIndex = 0
+  mentionRender(input)
+}
+
+function mentionRender(input) {
+  const dd = document.getElementById('mention-dropdown')
+  dd.innerHTML = mentionGefiltert.map((o, i) => `
+    <div onclick="mentionAuswahl(${i}, document.getElementById('dp-kommentar-input'))" style="padding:7px 12px;cursor:pointer;font-size:13px;${i===mentionIndex?'background:var(--orange-bg)':''}">
+      <strong>@${o.kuerzel}</strong> <span style="color:var(--text3)">${o.name}</span>
+    </div>`).join('')
+  dd.style.display = 'block'
+}
+
+function mentionAuswahl(i, input) {
+  const o = mentionGefiltert[i]
+  if (!o) return
+  const pos = input.selectionStart
+  const vorCursor = input.value.slice(0, pos)
+  const nachCursor = input.value.slice(pos)
+  const neuVorCursor = vorCursor.replace(/@([a-zA-ZäöüÄÖÜ]*)$/, '@' + o.kuerzel + ' ')
+  input.value = neuVorCursor + nachCursor
+  const neuePos = neuVorCursor.length
+  input.focus()
+  input.setSelectionRange(neuePos, neuePos)
+  mentionAktiv = false
+  document.getElementById('mention-dropdown').style.display = 'none'
+}
+
+function mentionKeydown(event, stationId) {
+  const input = event.target
+  if (mentionAktiv) {
+    if (event.key === 'ArrowDown') { event.preventDefault(); mentionIndex = (mentionIndex + 1) % mentionGefiltert.length; mentionRender(input); return }
+    if (event.key === 'ArrowUp') { event.preventDefault(); mentionIndex = (mentionIndex - 1 + mentionGefiltert.length) % mentionGefiltert.length; mentionRender(input); return }
+    if (event.key === 'Enter' || event.key === 'Tab') { event.preventDefault(); mentionAuswahl(mentionIndex, input); return }
+    if (event.key === 'Escape') { mentionAktiv = false; document.getElementById('mention-dropdown').style.display = 'none'; return }
+  }
+  if (event.key === 'Enter') addKommentar(stationId)
+}
+
 async function addKommentar(stationId) {
   const input = document.getElementById('dp-kommentar-input')
   const text = input ? input.value.trim() : ''
@@ -747,11 +807,11 @@ async function addKommentar(stationId) {
     await sb('kommentare', { method:'POST', body: JSON.stringify({ station_id: stationId, text }) })
     input.value = ''
 
-    // @-Erwähnungen erkennen
+    // @-Erwähnungen erkennen (Groß-/Kleinschreibung egal)
     const erwaehnte = []
-    if (text.includes('@IV')) erwaehnte.push('IV')
-    if (text.includes('@DS')) erwaehnte.push('DS')
-    if (text.includes('@FB')) erwaehnte.push('FB')
+    if (/@iv\b/i.test(text)) erwaehnte.push('IV')
+    if (/@ds\b/i.test(text)) erwaehnte.push('DS')
+    if (/@fb\b/i.test(text)) erwaehnte.push('FB')
 
     if (erwaehnte.length > 0) {
       const s = stationen.find(x => x.id === stationId)
@@ -765,7 +825,7 @@ async function addKommentar(stationId) {
             station: s ? (s.kundenname || s.bezeichnung || s.interne_id) : stationId,
             standort: s ? (s.standort || '') : '',
             interne_id: s ? s.interne_id : stationId,
-            app_url: 'https://ao-ingo.github.io/Betrieb-Stoerungen'
+            app_url: 'https://ao-ingo.github.io/Betrieb-Stoerungen?station=' + encodeURIComponent(s ? s.interne_id : stationId)
           })
         }).catch(()=>{})
       }
@@ -1619,9 +1679,10 @@ function openDetail(id) {
     <!-- Kommentare -->
     <div style="border-top:1px solid var(--border);padding-top:12px">
       <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Verlauf & Kommentare</div>
-      <div style="display:flex;gap:6px;margin-bottom:10px">
-        <input id="dp-kommentar-input" placeholder="Neuer Kommentar…" style="flex:1;padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif;background:var(--bg2)" onkeydown="if(event.key==='Enter')addKommentar('${s.id}')">
+      <div style="display:flex;gap:6px;margin-bottom:10px;position:relative">
+        <input id="dp-kommentar-input" placeholder="Neuer Kommentar… (@ für Erwähnung)" style="flex:1;padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif;background:var(--bg2)" autocomplete="off" oninput="mentionCheck(this)" onkeydown="mentionKeydown(event,'${s.id}')">
         <button class="btn btn-primary btn-sm" onclick="addKommentar('${s.id}')">+ Hinzufügen</button>
+        <div id="mention-dropdown" style="display:none;position:absolute;bottom:38px;left:0;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);box-shadow:0 4px 14px rgba(0,0,0,0.18);z-index:50;min-width:210px;overflow:hidden"></div>
       </div>
       <div id="dp-kommentare-list">
         ${(s.kommentare||[]).sort((a,b)=>new Date(b.erstellt_am)-new Date(a.erstellt_am)).map(k=>{
@@ -1956,8 +2017,32 @@ async function markiereAusgewaehltErledigt() {
   loadStationen()
 }
 
+async function handleDeepLink() {
+  try {
+    const params = new URLSearchParams(window.location.search)
+    const zielId = params.get('station')
+    if (!zielId) return false
+    const treffer = await sb(`stationen?interne_id=eq.${encodeURIComponent(zielId)}&select=id,meldungstyp,irrelevant,erledigt`)
+    if (!treffer || !treffer.length) return false
+    const s = treffer[0]
+    if (s.irrelevant && !s.erledigt) tab = s.meldungstyp === 'offline' ? 'irr-offline' : 'irr-stoerung'
+    else if (s.erledigt) tab = s.meldungstyp === 'offline' ? 'erl-offline' : 'erl-stoerung'
+    else tab = s.meldungstyp === 'offline' ? 'offline' : 'stoerung'
+    Object.keys(TAB_LABELS).forEach(id => {
+      const el = document.getElementById('nav-'+id)
+      if (el) el.className = 'nav-item' + (id===tab ? ' active' : '')
+    })
+    const titleEl = document.getElementById('topbar-title')
+    if (titleEl) titleEl.textContent = TAB_LABELS[tab] || tab
+    await loadStationen()
+    openDetail(s.id)
+    history.replaceState(null, '', window.location.pathname)
+    return true
+  } catch(e) { return false }
+}
+
 loadBanner()
-loadStationen()
+handleDeepLink().then(handled => { if (!handled) loadStationen() })
 </script>
 </body>
 </html>
