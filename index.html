@@ -1419,7 +1419,7 @@ function renderList() {
       const grpKVorschau = grpNeusterK ? `<span style="font-size:11px;color:var(--text2);background:var(--bg2);border-left:2px solid var(--orange);padding:1px 6px;border-radius:0 3px 3px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:250px">💬 ${grpNeusterK.text}</span>` : ''
 
       html += `<div class="gruppe">
-        <div class="card${grpFarbe}" onclick="toggleGruppe('${gruppeId}')" style="cursor:pointer;margin-bottom:4px">
+        <div class="card${grpFarbe}" onclick="toggleGruppe('${gruppeId}')" style="cursor:pointer;margin-bottom:4px;padding-bottom:6px">
           <div style="display:flex;align-items:center;gap:6px;justify-content:space-between">
             <div style="display:flex;align-items:center;gap:6px;min-width:0;flex:1;overflow:hidden">
               <span class="badge ${grpBadgeClass}" style="flex-shrink:0">${grpBadgeText}</span>
@@ -1428,7 +1428,6 @@ function renderList() {
             </div>
             <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
               ${grpRouter}
-              <span class="gruppe-icon" id="icon-${gruppeId}" style="color:var(--text3);font-size:11px;transition:transform 0.15s">▶</span>
             </div>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-top:3px;gap:8px">
@@ -1451,6 +1450,9 @@ function renderList() {
                 }
               })()}
           </div>
+          <div style="text-align:center;margin-top:6px;border-top:1px solid var(--border);padding-top:4px">
+            <span class="gruppe-icon" id="icon-${gruppeId}" style="color:var(--text3);font-size:13px;transition:transform 0.15s;display:inline-block">∨</span>
+          </div>
         </div>
         <div class="gruppe-cards" id="${gruppeId}">
           ${gruppierte.map(cardHTML).join('')}
@@ -1466,7 +1468,10 @@ function toggleGruppe(id) {
   const cards = document.getElementById(id)
   const icon = document.getElementById('icon-' + id)
   if (cards) cards.classList.toggle('open')
-  if (icon) icon.classList.toggle('open')
+  if (icon) {
+    const isOpen = cards && cards.classList.contains('open')
+    icon.textContent = isOpen ? '∧' : '∨'
+  }
 }
 
 async function gruppeAufheben(gruppeId, ids) {
