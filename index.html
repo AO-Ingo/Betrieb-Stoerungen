@@ -690,9 +690,6 @@ async function bearbeiteLoesung(id) {
       <button onclick="speichereLoesung('${id}')" style="padding:7px 14px;border:none;border-radius:8px;background:#e8581a;color:#fff;cursor:pointer;font-size:13px;font-weight:500">Speichern</button>
     </div>
   </div>`
-  document.getElementById('loesung-select', overlay).addEventListener('change', function() {
-    document.getElementById('loesung-sonstiges').style.display = this.value === 'Sonstiges' ? 'block' : 'none'
-  })
   document.body.appendChild(overlay)
   overlay.querySelector('#loesung-select').addEventListener('change', function() {
     overlay.querySelector('#loesung-sonstiges').style.display = this.value === 'Sonstiges' ? 'block' : 'none'
