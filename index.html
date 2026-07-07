@@ -677,24 +677,26 @@ async function setRouterOnline(stationId, value) {
 async function bearbeiteLoesung(id) {
   const s = stationen.find(x => x.id === id)
   const aktuell = s ? s.loesung||'' : ''
-  // Einfaches Select-Popup
+  const loesungsOptionen = ['Neustart stromlos','Neustart RMS','Router Neustart','Softwareupdate','Serviceeinsatz','Kein Eingriff','Sonstiges']
   const overlay = document.createElement('div')
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center'
+  const optionsHtml = loesungsOptionen.map(l=>`<option value="${l}" ${aktuell===l||aktuell.startsWith(l)?'selected':''}>${l}</option>`).join('')
   overlay.innerHTML = `<div style="background:#fff;border-radius:10px;padding:20px;min-width:280px;box-shadow:0 8px 30px rgba(0,0,0,0.2)">
     <div style="font-size:13px;font-weight:600;margin-bottom:12px">Lösung bearbeiten</div>
-    <select id="loesung-select" style="width:100%;padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;margin-bottom:8px">
-      ${LOESUNGEN.map(l=>`<option value="${l}" ${aktuell===l||aktuell.startsWith(l)?'selected':''}>${l}</option>`).join('')}
-    </select>
+    <select id="loesung-select" style="width:100%;padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;margin-bottom:8px">${optionsHtml}</select>
     <input id="loesung-sonstiges" placeholder="Beschreibung…" style="display:${aktuell.startsWith('Sonstiges')?'block':'none'};width:100%;padding:6px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;margin-bottom:8px" value="${aktuell.startsWith('Sonstiges:')?aktuell.replace('Sonstiges: ',''):''}">
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button onclick="this.closest('[style*=fixed]').remove()" style="padding:7px 14px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;cursor:pointer;font-size:13px">Abbrechen</button>
       <button onclick="speichereLoesung('${id}')" style="padding:7px 14px;border:none;border-radius:8px;background:#e8581a;color:#fff;cursor:pointer;font-size:13px;font-weight:500">Speichern</button>
     </div>
   </div>`
-  document.getElementById('loesung-select').addEventListener('change', function() {
+  document.getElementById('loesung-select', overlay).addEventListener('change', function() {
     document.getElementById('loesung-sonstiges').style.display = this.value === 'Sonstiges' ? 'block' : 'none'
   })
   document.body.appendChild(overlay)
+  overlay.querySelector('#loesung-select').addEventListener('change', function() {
+    overlay.querySelector('#loesung-sonstiges').style.display = this.value === 'Sonstiges' ? 'block' : 'none'
+  })
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove() })
 }
 
@@ -1727,7 +1729,8 @@ async function doImport() {
 
 async function markiereAusgewaehltErledigt() {
   const checkboxen = document.querySelectorAll('.rueckwaerts-check:checked')
-  const loesung = document.getElementById('rueck-loesung')?.value || 'Nach Neustart stromlos wieder online'
+  const loesung = document.getElementById('rueck-loesung')?.value || ''
+  if (!loesung) { alert('Bitte zuerst einen Lösungsgrund auswählen.'); return }
   for (const cb of checkboxen) {
     const id = cb.dataset.id
     try {
