@@ -679,7 +679,7 @@ async function bearbeiteLoesung(id) {
   const aktuell = s ? s.loesung||'' : ''
   const loesungsOptionen = ['Neustart stromlos','Neustart RMS','Router Neustart','Softwareupdate','Serviceeinsatz','Kein Eingriff','Sonstiges']
   const overlay = document.createElement('div')
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center'
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center'; overlay.className = 'app-overlay'
   const optionsHtml = loesungsOptionen.map(l=>`<option value="${l}" ${aktuell===l||aktuell.startsWith(l)?'selected':''}>${l}</option>`).join('')
   overlay.innerHTML = `<div style="background:#fff;border-radius:10px;padding:20px;min-width:280px;box-shadow:0 8px 30px rgba(0,0,0,0.2)">
     <div style="font-size:13px;font-weight:600;margin-bottom:12px">Lösung bearbeiten</div>
@@ -698,7 +698,7 @@ async function bearbeiteLoesung(id) {
 }
 
 async function speichereLoesung(id) {
-  const overlay = document.querySelector('[style*="position:fixed"][style*="z-index:200"]')
+  const overlay = document.querySelector('.app-overlay')
   const sel = overlay ? overlay.querySelector('#loesung-select') : null
   const sonst = overlay ? overlay.querySelector('#loesung-sonstiges') : null
   const loesung = sel ? (sel.value === 'Sonstiges' ? 'Sonstiges: ' + (sonst?.value||'') : sel.value) : ''
@@ -953,7 +953,7 @@ function alleAbwaehlen() {
 
 async function ausgewaehltErledigt() {
   const overlay = document.createElement('div')
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center'
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center'; overlay.className = 'app-overlay'
   const optionsHtml = ['Neustart stromlos','Neustart RMS','Router Neustart','Softwareupdate','Serviceeinsatz','Kein Eingriff','Sonstiges'].map(l=>`<option value="${l}">${l}</option>`).join('')
   overlay.innerHTML = `<div style="background:#fff;border-radius:10px;padding:20px;min-width:300px;box-shadow:0 8px 30px rgba(0,0,0,0.2)">
     <div style="font-size:14px;font-weight:600;margin-bottom:14px">Lösungsgrund (${selectedCards.size} Stationen)</div>
@@ -974,7 +974,7 @@ async function ausgewaehltErledigt() {
 }
 
 async function bestaetigeAusgewaehltErledigt() {
-  const overlay = document.querySelector('[style*="position:fixed"][style*="z-index:200"]')
+  const overlay = document.querySelector('.app-overlay')
   const sel = overlay?.querySelector('#sammel-loesung')
   const sonst = overlay?.querySelector('#sammel-sonstiges')
   const loesung = sel?.value === 'Sonstiges' ? 'Sonstiges: ' + (sonst?.value||'') : sel?.value
@@ -1025,7 +1025,7 @@ async function bearbeiteGruppe(gruppeId) {
   const aktuellMa = erste?.mitarbeiter || ''
 
   const overlay = document.createElement('div')
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center'
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center'; overlay.className = 'app-overlay'
   overlay.innerHTML = `<div style="background:#fff;border-radius:10px;padding:20px;min-width:320px;box-shadow:0 8px 30px rgba(0,0,0,0.2)">
     <div style="font-size:14px;font-weight:600;margin-bottom:14px">Gruppe bearbeiten (${ids.length} Stationen)</div>
     <div style="font-size:11px;color:#999;margin-bottom:4px">Farbcode</div>
@@ -1054,7 +1054,7 @@ async function bearbeiteGruppe(gruppeId) {
 }
 
 async function speichereGruppe(ids) {
-  const overlay = document.querySelector('[style*="position:fixed"][style*="z-index:200"]')
+  const overlay = document.querySelector('.app-overlay')
   const farbe = overlay?.querySelector('#grp-farbe')?.value || null
   const ma = overlay?.querySelector('#grp-ma')?.value || null
   const notizen = overlay?.querySelector('#grp-notizen')?.value || null
@@ -1079,7 +1079,7 @@ function setGruppeMitarbeiterByKey(key) {
 
 async function setGruppeMitarbeiter(ids) {
   const overlay = document.createElement('div')
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center'
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center'; overlay.className = 'app-overlay'
   overlay.innerHTML = `<div style="background:#fff;border-radius:10px;padding:20px;min-width:220px;box-shadow:0 8px 30px rgba(0,0,0,0.2)">
     <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:#111">Mitarbeiter für Gruppe</div>
     ${MITARBEITER_LIST.map(m => `<button onclick="window._grpMaIds&&chooseGruppeMitarbeiter('${m.initialen}')" style="display:block;width:100%;text-align:left;padding:8px 12px;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:6px;background:#fff;cursor:pointer;font-size:13px;font-family:'DM Sans',sans-serif">
@@ -1099,7 +1099,7 @@ async function setGruppeMitarbeiter(ids) {
 async function chooseGruppeMitarbeiter(initialen) {
   const ids = window._grpMaIds || []
   window._grpMaIds = null
-  document.querySelector('[style*="position:fixed"][style*="z-index:200"]')?.remove()
+  document.querySelector('.app-overlay')?.remove()
   for (const id of ids) {
     await sb(`stationen?id=eq.${id}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ mitarbeiter: initialen }) })
   }
@@ -1112,7 +1112,7 @@ async function setMitarbeiter(id) {
 
   // Popup mit Auswahl
   const overlay = document.createElement('div')
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center'
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center'; overlay.className = 'app-overlay'
   overlay.innerHTML = `<div style="background:#fff;border-radius:10px;padding:20px;min-width:220px;box-shadow:0 8px 30px rgba(0,0,0,0.2)">
     <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:#111">Mitarbeiter zuweisen</div>
     ${MITARBEITER_LIST.map(m => `<button onclick="chooseMitarbeiter('${id}','${m.initialen}',this.closest('.ma-overlay'))" class="ma-overlay" style="display:block;width:100%;text-align:left;padding:8px 12px;border:1px solid ${aktuell===m.initialen?'#e8581a':'#e5e7eb'};border-radius:8px;margin-bottom:6px;background:${aktuell===m.initialen?'#fff0e8':'#fff'};cursor:pointer;font-size:13px;font-family:'DM Sans',sans-serif">
@@ -1129,7 +1129,7 @@ async function setMitarbeiter(id) {
 }
 
 async function chooseMitarbeiter(id, initialen, el) {
-  document.querySelector('[style*="position:fixed"][style*="z-index:200"]')?.remove()
+  document.querySelector('.app-overlay')?.remove()
   await sb(`stationen?id=eq.${id}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ mitarbeiter: initialen }) })
   await loadStationen()
   if (currentStation && currentStation.id === id) openDetail(id)
