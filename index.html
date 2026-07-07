@@ -551,74 +551,102 @@ async function ladeStatistik() {
   document.getElementById('list').innerHTML = '<p style="color:#999;padding:20px">Lade Statistik…</p>'
   document.getElementById('detail-panel').classList.remove('open')
   try {
-    const alle = await sb('stationen?select=id,meldungstyp,irrelevant,erledigt,loesung,kundenname,standort,interne_id,erstellt_am') || []
-    const aktiv_off = alle.filter(s=>s.meldungstyp==='offline'&&!s.irrelevant&&!s.erledigt).length
-    const aktiv_st = alle.filter(s=>s.meldungstyp==='stoerung'&&!s.irrelevant&&!s.erledigt).length
+    const alle = await sb('stationen?select=id,meldungstyp,irrelevant,erledigt,loesung,kundenname,standort,interne_id,erstellt_am,ladepunkte(id,evse_id)') || []
+    const aktiv = alle.filter(s=>!s.irrelevant&&!s.erledigt)
+    const aktiv_off = aktiv.filter(s=>s.meldungstyp==='offline')
+    const aktiv_st = aktiv.filter(s=>s.meldungstyp==='stoerung')
     const erledigt = alle.filter(s=>s.erledigt)
-    const irrelevant = alle.filter(s=>s.irrelevant&&!s.erledigt).length
+    const irrelevant = alle.filter(s=>s.irrelevant&&!s.erledigt)
 
-    // Lösungen zählen
+    // Zähle nach EVSE-IDs (Ladepunkte)
+    const evseCount = s => (s.ladepunkte||[]).length || 1
+    const aktiv_off_lp = aktiv_off.reduce((a,s)=>a+evseCount(s),0)
+    const aktiv_st_lp = aktiv_st.reduce((a,s)=>a+evseCount(s),0)
+
+    // Lösungen zählen (nach EVSE)
     const loesungCount = {}
     for (const s of erledigt) {
-      const l = s.loesung || 'Nicht angegeben'
-      const key = LOESUNGEN.find(k => l.startsWith(k)) || 'Sonstiges'
-      loesungCount[key] = (loesungCount[key]||0) + 1
+      const lp = evseCount(s)
+      const l = s.loesung || ''
+      const key = !l ? 'Keine Angabe' : (LOESUNGEN.find(k => l.startsWith(k)) || 'Sonstiges')
+      loesungCount[key] = (loesungCount[key]||0) + lp
     }
     const loesungSorted = Object.entries(loesungCount).sort((a,b)=>b[1]-a[1])
 
-    // Häufigste Stationen (nach interne_id)
-    const stCount = {}
+    // Wiederholungsausfälle: gleiche interne_id mehrfach erledigt
+    const wiederholungMap = {}
     for (const s of erledigt) {
-      const key = (s.kundenname||s.interne_id) + '|' + (s.standort||'')
-      if (!stCount[key]) stCount[key] = { name: s.kundenname||s.interne_id, standort: s.standort||'', count: 0 }
-      stCount[key].count++
+      const key = s.interne_id
+      if (!wiederholungMap[key]) wiederholungMap[key] = { name: s.kundenname||s.interne_id, standort: s.standort||'', count: 0 }
+      wiederholungMap[key].count++
     }
-    const stSorted = Object.values(stCount).sort((a,b)=>b.count-a.count).slice(0,10)
+    const wiederholungen = Object.values(wiederholungMap).filter(s=>s.count>1).sort((a,b)=>b.count-a.count).slice(0,8)
 
-    const barHtml = (val, max, color) => `<div style="height:8px;background:var(--bg3);border-radius:4px;overflow:hidden"><div style="height:100%;width:${Math.round(val/max*100)}%;background:${color};border-radius:4px"></div></div>`
+    // Standorte mit aktuell meisten Ausfällen (aktive Offline+Störung nach Standort)
+    const standortMap = {}
+    for (const s of aktiv) {
+      const key = (s.standort||s.kundenname||'–')
+      if (!standortMap[key]) standortMap[key] = { name: key, lp: 0 }
+      standortMap[key].lp += evseCount(s)
+    }
+    const standortSorted = Object.values(standortMap).sort((a,b)=>b.lp-a.lp).slice(0,8)
+
+    const barHtml = (val, max, color) => `<div style="height:8px;background:var(--bg3);border-radius:4px;overflow:hidden;margin-top:4px"><div style="height:100%;width:${Math.round(val/max*100)}%;background:${color};border-radius:4px"></div></div>`
     const maxL = loesungSorted[0]?.[1] || 1
-    const maxS = stSorted[0]?.count || 1
+    const maxW = wiederholungen[0]?.count || 1
+    const maxSt = standortSorted[0]?.lp || 1
 
     document.getElementById('list').innerHTML = `
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px">
         <div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-align:center">
-          <div style="font-size:32px;font-weight:700;color:#ef4444">${aktiv_off}</div>
-          <div style="font-size:12px;color:var(--text2);margin-top:4px">⚡ Aktiv Offline</div>
+          <div style="font-size:32px;font-weight:700;color:#ef4444">${aktiv_off_lp}</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:4px">⚡ Offline Ladepunkte</div>
         </div>
         <div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-align:center">
-          <div style="font-size:32px;font-weight:700;color:#f59e0b">${aktiv_st}</div>
-          <div style="font-size:12px;color:var(--text2);margin-top:4px">⚠ Aktiv Störung</div>
+          <div style="font-size:32px;font-weight:700;color:#f59e0b">${aktiv_st_lp}</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:4px">⚠ Störung Ladepunkte</div>
         </div>
         <div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-align:center">
           <div style="font-size:32px;font-weight:700;color:#16a34a">${erledigt.length}</div>
           <div style="font-size:12px;color:var(--text2);margin-top:4px">✓ Erledigt gesamt</div>
         </div>
         <div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-align:center">
-          <div style="font-size:32px;font-weight:700;color:#6b7280">${irrelevant}</div>
+          <div style="font-size:32px;font-weight:700;color:#6b7280">${irrelevant.length}</div>
           <div style="font-size:12px;color:var(--text2);margin-top:4px">○ Irrelevant</div>
         </div>
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
         <div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:16px">
-          <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px">Häufigste Lösungen</div>
+          <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px">Lösungen (nach Ladepunkten)</div>
           ${loesungSorted.map(([l,n])=>`<div style="margin-bottom:10px">
-            <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
-              <span>${l}</span><span style="font-weight:600">${n}</span>
+            <div style="display:flex;justify-content:space-between;font-size:13px">
+              <span>${l}</span><span style="font-weight:600">${n} LP</span>
             </div>
             ${barHtml(n,maxL,'#e8581a')}
           </div>`).join('') || '<div style="color:var(--text3);font-size:13px">Noch keine Daten</div>'}
         </div>
         <div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:16px">
-          <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px">Häufigste Stationen</div>
-          ${stSorted.map(s=>`<div style="margin-bottom:10px">
-            <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
-              <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70%">${s.name}${s.standort?' · '+s.standort:''}</span>
-              <span style="font-weight:600;flex-shrink:0">${s.count}×</span>
+          <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px">Standorte mit aktuell meisten Ausfällen</div>
+          ${standortSorted.map(s=>`<div style="margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;font-size:13px">
+              <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:75%">${s.name}</span>
+              <span style="font-weight:600;flex-shrink:0">${s.lp} LP</span>
             </div>
-            ${barHtml(s.count,maxS,'#6d28d9')}
-          </div>`).join('') || '<div style="color:var(--text3);font-size:13px">Noch keine Daten</div>'}
+            ${barHtml(s.lp,maxSt,'#ef4444')}
+          </div>`).join('') || '<div style="color:var(--text3);font-size:13px">Keine aktiven Ausfälle</div>'}
         </div>
+      </div>
+
+      <div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:16px">
+        <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px">Stationen mit Wiederholungsausfällen</div>
+        ${wiederholungen.length ? wiederholungen.map(s=>`<div style="margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;font-size:13px">
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:75%">${s.name}${s.standort?' · '+s.standort:''}</span>
+            <span style="font-weight:600;flex-shrink:0">${s.count}× ausgefallen</span>
+          </div>
+          ${barHtml(s.count,maxW,'#6d28d9')}
+        </div>`).join('') : '<div style="color:var(--text3);font-size:13px">Keine Wiederholungsausfälle</div>'}
       </div>`
   } catch(e) {
     document.getElementById('list').innerHTML = `<div class="error-box">Fehler: ${e.message}</div>`
