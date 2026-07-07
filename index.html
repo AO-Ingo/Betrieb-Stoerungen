@@ -670,16 +670,16 @@ async function ladeStatistik() {
             if (!loesungSorted.length) return '<div style="color:var(--text3);font-size:13px">Noch keine Daten</div>'
             const total = loesungSorted.reduce((s,[,n])=>s+n,0)
             const pieColorMap = {
-              'Neustart stromlos': '#e8581a',
-              'Neustart RMS': '#f97316',
-              'Router Neustart': '#0ea5e9',
-              'Softwareupdate': '#6d28d9',
+              'Neustart stromlos': '#0ea5e9',
+              'Neustart RMS': '#6366f1',
+              'Router Neustart': '#8b5cf6',
+              'Softwareupdate': '#dc2626',
               'Serviceeinsatz': '#ec4899',
-              'Kein Eingriff': '#f59e0b',
-              'Sonstiges': '#9ca3af',
-              'Keine Angabe': '#d1d5db'
+              'Kein Eingriff': '#14b8a6',
+              'Sonstiges': '#64748b',
+              'Keine Angabe': '#a3a3a3'
             }
-            const pieColors = ['#e8581a','#f97316','#0ea5e9','#6d28d9','#ec4899','#f59e0b','#9ca3af']
+            const pieColors = ['#0ea5e9','#6366f1','#8b5cf6','#dc2626','#ec4899','#14b8a6','#64748b']
             let startAngle = -Math.PI/2
             const cx=90,cy=90,r=75
             const slices = loesungSorted.map(([l,n],i)=>{
