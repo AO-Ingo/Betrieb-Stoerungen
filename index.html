@@ -1017,8 +1017,21 @@ const gruppenIdsMap = {}
 const gruppenKartenMap = {}
 
 async function bearbeiteGruppe(gruppeId) {
-  const ids = gruppenIdsMap[gruppeId.replace('grp-','grp_').replace(/-/g,'_')] || gruppenIdsMap[gruppeId]
-  if (!ids || !ids.length) return
+  const key1 = gruppeId.replace('grp-','grp_').replace(/-/g,'_')
+  const key2 = gruppeId
+  const ids = gruppenIdsMap[key1] || gruppenIdsMap[key2] || gruppenIdsMap['grp_' + gruppeId.replace(/[^a-zA-Z0-9]/g,'_')]
+  if (!ids || !ids.length) {
+    // Fallback: alle Karten der Gruppe direkt aus DOM holen
+    const gruppeEl = document.getElementById(gruppeId)
+    if (!gruppeEl) { alert('Gruppe nicht gefunden: ' + gruppeId); return }
+    const kartenIds = [...gruppeEl.querySelectorAll('.card[id^="card-"]')].map(c=>c.id.replace('card-',''))
+    if (!kartenIds.length) { alert('Keine Karten in Gruppe'); return }
+    return bearbeiteGruppeById(kartenIds)
+  }
+  return bearbeiteGruppeById(ids)
+}
+
+async function bearbeiteGruppeById(ids) {
 
   const erste = stationen.find(s => ids.includes(s.id))
   const aktuellFarbe = erste?.prioritaet_farbe || ''
@@ -1564,6 +1577,11 @@ function openDetail(id) {
   document.getElementById('dp-footer').innerHTML = footer
 
   document.getElementById('detail-panel').classList.add('open')
+  // Edit-Section immer versteckt starten
+  setTimeout(() => {
+    const el = document.getElementById('dp-edit-section')
+    if (el) el.style.display = 'none'
+  }, 0)
 }
 
 function toggleEditSection() {
