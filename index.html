@@ -564,8 +564,9 @@ async function setRouterOnline(stationId, value) {
   } catch(e) { alert('Fehler: '+e.message) }
 }
 
-async function bearbeiteLoesung(id, aktuell) {
-  const loesung = prompt('Lösung bearbeiten:', aktuell)
+async function bearbeiteLoesung(id) {
+  const s = stationen.find(x => x.id === id)
+  const loesung = prompt('Lösung bearbeiten:', s ? s.loesung||'' : '')
   if (loesung === null) return
   try {
     await sb(`stationen?id=eq.${id}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({ loesung: loesung||null }) })
@@ -1218,7 +1219,7 @@ function openDetail(id) {
       <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px">Lösung</div>
       <div style="display:flex;gap:6px;align-items:flex-start">
         <div class="info-box info-box-green" style="flex:1">${s.loesung||'–'}</div>
-        <button class="btn btn-secondary btn-sm" onclick="bearbeiteLoesung('${s.id}','${(s.loesung||'').replace(/'/g,\"\\'\")}')">✏</button>
+        <button class="btn btn-secondary btn-sm" onclick="bearbeiteLoesung('${s.id}')">✏</button>
       </div>
     </div>`:''}
     ${isIrr&&s.irrelevant_grund?`<div class="info-box info-box-gray" style="margin-bottom:12px">Grund: ${s.irrelevant_grund}</div>`:''}
