@@ -698,10 +698,11 @@ async function bearbeiteLoesung(id) {
 }
 
 async function speichereLoesung(id) {
-  const sel = document.getElementById('loesung-select')
-  const sonst = document.getElementById('loesung-sonstiges')
-  const loesung = sel.value === 'Sonstiges' ? 'Sonstiges: ' + (sonst.value||'') : sel.value
-  document.querySelector('[style*="position:fixed"][style*="z-index:200"]')?.remove()
+  const overlay = document.querySelector('[style*="position:fixed"][style*="z-index:200"]')
+  const sel = overlay ? overlay.querySelector('#loesung-select') : null
+  const sonst = overlay ? overlay.querySelector('#loesung-sonstiges') : null
+  const loesung = sel ? (sel.value === 'Sonstiges' ? 'Sonstiges: ' + (sonst?.value||'') : sel.value) : ''
+  if (overlay) overlay.remove()
   try {
     await sb(`stationen?id=eq.${id}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({ loesung }) })
     await loadStationen()
@@ -987,6 +988,62 @@ const MITARBEITER_LIST = [
 ]
 
 const gruppenIdsMap = {}
+const gruppenKartenMap = {}
+
+async function bearbeiteGruppe(gruppeId) {
+  const ids = gruppenIdsMap[gruppeId.replace('grp-','grp_').replace(/-/g,'_')] || gruppenIdsMap[gruppeId]
+  if (!ids || !ids.length) return
+
+  const erste = stationen.find(s => ids.includes(s.id))
+  const aktuellFarbe = erste?.prioritaet_farbe || ''
+  const aktuellMa = erste?.mitarbeiter || ''
+
+  const overlay = document.createElement('div')
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center'
+  overlay.innerHTML = `<div style="background:#fff;border-radius:10px;padding:20px;min-width:320px;box-shadow:0 8px 30px rgba(0,0,0,0.2)">
+    <div style="font-size:14px;font-weight:600;margin-bottom:14px">Gruppe bearbeiten (${ids.length} Stationen)</div>
+    <div style="font-size:11px;color:#999;margin-bottom:4px">Farbcode</div>
+    <select id="grp-farbe" style="width:100%;padding:7px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;margin-bottom:10px">
+      <option value="">Kein Farbcode</option>
+      <option value="rot" ${aktuellFarbe==='rot'?'selected':''}>🔴 Rot – sofortiger Handlungsbedarf</option>
+      <option value="gelb" ${aktuellFarbe==='gelb'?'selected':''}>🟡 Warten auf Kunden</option>
+      <option value="gruen" ${aktuellFarbe==='gruen'?'selected':''}>🟢 Grün – kein Handlungsbedarf</option>
+    </select>
+    <div style="font-size:11px;color:#999;margin-bottom:4px">Mitarbeiter</div>
+    <select id="grp-ma" style="width:100%;padding:7px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;margin-bottom:10px">
+      <option value="">– Niemand</option>
+      <option value="IV" ${aktuellMa==='IV'?'selected':''}>IV – Ingo Vogt</option>
+      <option value="DS" ${aktuellMa==='DS'?'selected':''}>DS – Dmitrij Smolenski</option>
+      <option value="FB" ${aktuellMa==='FB'?'selected':''}>FB – Ferdinand Busalt</option>
+    </select>
+    <div style="font-size:11px;color:#999;margin-bottom:4px">Notizen (für alle Stationen)</div>
+    <textarea id="grp-notizen" style="width:100%;padding:7px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;height:70px;resize:none;font-family:'DM Sans',sans-serif" placeholder="Notizen…"></textarea>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+      <button onclick="this.closest('[style*=fixed]').remove()" style="padding:7px 14px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;cursor:pointer;font-size:13px">Abbrechen</button>
+      <button onclick="speichereGruppe(${JSON.stringify(ids)})" style="padding:7px 14px;border:none;border-radius:8px;background:#e8581a;color:#fff;cursor:pointer;font-size:13px;font-weight:500">Speichern</button>
+    </div>
+  </div>`
+  document.body.appendChild(overlay)
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove() })
+}
+
+async function speichereGruppe(ids) {
+  const overlay = document.querySelector('[style*="position:fixed"][style*="z-index:200"]')
+  const farbe = overlay?.querySelector('#grp-farbe')?.value || null
+  const ma = overlay?.querySelector('#grp-ma')?.value || null
+  const notizen = overlay?.querySelector('#grp-notizen')?.value || null
+  if (overlay) overlay.remove()
+  for (const id of ids) {
+    const patch = {}
+    if (farbe !== null) patch.prioritaet_farbe = farbe || null
+    if (ma !== null) patch.mitarbeiter = ma || null
+    if (notizen) patch.notizen = notizen
+    if (Object.keys(patch).length) {
+      await sb(`stationen?id=eq.${id}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify(patch) })
+    }
+  }
+  await loadStationen()
+}
 
 function setGruppeMitarbeiterByKey(key) {
   const ids = gruppenIdsMap[key]
@@ -1167,6 +1224,7 @@ function renderList() {
               ${grpKVorschau}
             </div>
             <button class="btn btn-sm btn-secondary" style="font-size:11px;padding:2px 8px;flex-shrink:0" onclick="event.stopPropagation();gruppeAufheben('${gruppeId}',${JSON.stringify(gruppierte.map(s=>s.id))})" title="Gruppe aufheben">↗ Trennen</button>
+              <button class="btn btn-sm btn-secondary" style="font-size:11px;padding:2px 8px;flex-shrink:0" onclick="event.stopPropagation();bearbeiteGruppe('${gruppeId}')">✏</button>
               ${(()=>{
                 const mas = [...new Set(gruppierte.map(s=>s.mitarbeiter).filter(Boolean))]
                 const grpKey = 'grp_' + gruppeId.replace(/-/g,'_')
