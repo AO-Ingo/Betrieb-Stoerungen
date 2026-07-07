@@ -497,7 +497,20 @@ async function sucheAlleTabs() {
         <button class="btn btn-secondary btn-sm" style="margin-left:8px" onclick="document.getElementById('search-all').value='';sucheAlleTabs()">✕ Schließen</button>
       </div>
       ${treffer.map(s => {
-        return cardHTML(s)
+        const tabKey = s.erledigt
+          ? (s.meldungstyp==='offline' ? 'erl-offline' : 'erl-stoerung')
+          : s.irrelevant
+          ? (s.meldungstyp==='offline' ? 'irr-offline' : 'irr-stoerung')
+          : s.meldungstyp==='offline' ? 'offline' : 'stoerung'
+        const tabName = TAB_LABELS[tabKey] || tabKey
+        const cardHtml = cardHTML(s)
+        // Füge Tab-Badge oberhalb der Karte ein
+        return `<div style="margin-bottom:2px">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+            <button onclick="document.getElementById('search-all').value='';sucheAlleTabs();setTab('${tabKey}')" style="font-size:11px;color:var(--orange);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline">↗ ${tabName}</button>
+          </div>
+          ${cardHtml}
+        </div>`
       }).join('')}
     `
   } catch(e) {
@@ -548,6 +561,16 @@ async function setRouterOnline(stationId, value) {
     await sb(`stationen?id=eq.${stationId}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({ router_online: value }) })
     await loadStationen()
     openDetail(stationId)
+  } catch(e) { alert('Fehler: '+e.message) }
+}
+
+async function bearbeiteLoesung(id, aktuell) {
+  const loesung = prompt('Lösung bearbeiten:', aktuell)
+  if (loesung === null) return
+  try {
+    await sb(`stationen?id=eq.${id}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({ loesung: loesung||null }) })
+    await loadStationen()
+    openDetail(id)
   } catch(e) { alert('Fehler: '+e.message) }
 }
 
@@ -1191,7 +1214,13 @@ function openDetail(id) {
       </div>
     </div>`:''}
 
-    ${isErl&&s.loesung?`<div class="info-box info-box-green" style="margin-bottom:12px">✓ Lösung: ${s.loesung}</div>`:''}
+    ${isErl?`<div style="border-top:1px solid var(--border);padding-top:12px;margin-bottom:12px">
+      <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px">Lösung</div>
+      <div style="display:flex;gap:6px;align-items:flex-start">
+        <div class="info-box info-box-green" style="flex:1">${s.loesung||'–'}</div>
+        <button class="btn btn-secondary btn-sm" onclick="bearbeiteLoesung('${s.id}','${(s.loesung||'').replace(/'/g,\"\\'\")}')">✏</button>
+      </div>
+    </div>`:''}
     ${isIrr&&s.irrelevant_grund?`<div class="info-box info-box-gray" style="margin-bottom:12px">Grund: ${s.irrelevant_grund}</div>`:''}
 
     <!-- Bearbeiten -->
@@ -1300,6 +1329,7 @@ function openDetail(id) {
     footer += `<button class="btn btn-danger btn-sm" onclick="togglePopup('dp-popup-irr')">✕ Irrelevant</button>`
   }
   if (isIrr) footer += `<button class="btn btn-success btn-sm" onclick="reaktivieren('${s.id}')">↩ Reaktivieren</button>`
+  if (isErl) footer += `<button class="btn btn-success btn-sm" onclick="reaktivierenAusErledigt('${s.id}')">↩ Reaktivieren</button>`
   footer += `<button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="loeschen('${s.id}')">🗑</button>`
   if (isAktiv && s.meldungstyp === 'offline') {
     footer += `<div style="width:100%;border-top:1px solid var(--border);margin-top:8px;padding-top:8px;display:flex;gap:6px;flex-wrap:wrap">`
@@ -1349,6 +1379,15 @@ async function markiereIrrelevant(id) {
 async function reaktivieren(id) {
   try {
     await sb(`stationen?id=eq.${id}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({ irrelevant: false, irrelevant_grund: null }) })
+    loadStationen()
+  } catch(e) { alert('Fehler: '+e.message) }
+}
+
+async function reaktivierenAusErledigt(id) {
+  if (!confirm('Station reaktivieren und zurück in die aktive Liste verschieben?')) return
+  try {
+    await sb(`stationen?id=eq.${id}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({ erledigt: false, loesung: null }) })
+    closeDetail()
     loadStationen()
   } catch(e) { alert('Fehler: '+e.message) }
 }
