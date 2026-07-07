@@ -1644,7 +1644,8 @@ async function loeschen(id) {
   try {
     await sb(`ladepunkte?station_id=eq.${id}`, { method:'DELETE', prefer:'return=minimal' })
     await sb(`stationen?id=eq.${id}`, { method:'DELETE', prefer:'return=minimal' })
-    loadStationen()
+    await loadStationen()
+    openDetail(id)
   } catch(e) { alert('Fehler: '+e.message) }
 }
 
@@ -1691,7 +1692,8 @@ async function save(id) {
       if (inp.value.trim()) await sb('ladepunkte', { method:'POST', body: JSON.stringify({ station_id: id, evse_id: inp.value.trim(), prioritaet: null }) })
     }
 
-    loadStationen()
+    await loadStationen()
+    openDetail(id)
   } catch(e) { alert('Fehler: '+e.message) }
 }
 
