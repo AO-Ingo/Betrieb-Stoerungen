@@ -746,6 +746,31 @@ async function addKommentar(stationId) {
   try {
     await sb('kommentare', { method:'POST', body: JSON.stringify({ station_id: stationId, text }) })
     input.value = ''
+
+    // @-Erwähnungen erkennen
+    const erwaehnte = []
+    if (text.includes('@IV')) erwaehnte.push('IV')
+    if (text.includes('@DS')) erwaehnte.push('DS')
+    if (text.includes('@FB')) erwaehnte.push('FB')
+
+    if (erwaehnte.length > 0) {
+      const s = stationen.find(x => x.id === stationId)
+      for (const initialen of erwaehnte) {
+        fetch('https://hook.eu2.make.com/sz2mliv7qcnp5q5kob7xkc92yfy05lj9', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            initialen,
+            kommentar: text,
+            station: s ? (s.kundenname || s.bezeichnung || s.interne_id) : stationId,
+            standort: s ? (s.standort || '') : '',
+            interne_id: s ? s.interne_id : stationId,
+            app_url: 'https://ao-ingo.github.io/Betrieb-Stoerungen'
+          })
+        }).catch(()=>{})
+      }
+    }
+
     await loadStationen()
     const updated = stationen.find(x => x.id === stationId)
     if (updated) openDetail(stationId)
