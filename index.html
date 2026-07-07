@@ -1059,19 +1059,22 @@ async function bearbeiteGruppeById(ids) {
     <textarea id="grp-notizen" style="width:100%;padding:7px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;height:70px;resize:none;font-family:'DM Sans',sans-serif" placeholder="Notizen…"></textarea>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
       <button onclick="this.closest('[style*=fixed]').remove()" style="padding:7px 14px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;cursor:pointer;font-size:13px">Abbrechen</button>
-      <button onclick="speichereGruppe(${JSON.stringify(ids)})" style="padding:7px 14px;border:none;border-radius:8px;background:#e8581a;color:#fff;cursor:pointer;font-size:13px;font-weight:500">Speichern</button>
+      <button onclick="speichereGruppe()" style="padding:7px 14px;border:none;border-radius:8px;background:#e8581a;color:#fff;cursor:pointer;font-size:13px;font-weight:500">Speichern</button>
     </div>
   </div>`
+  window._gruppeIds = ids
   document.body.appendChild(overlay)
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove() })
 }
 
-async function speichereGruppe(ids) {
+async function speichereGruppe() {
   const overlay = document.querySelector('.app-overlay')
-  const farbe = overlay?.querySelector('#grp-farbe')?.value || null
-  const ma = overlay?.querySelector('#grp-ma')?.value || null
+  const ids = window._gruppeIds || []
+  const farbe = overlay?.querySelector('#grp-farbe')?.value ?? null
+  const ma = overlay?.querySelector('#grp-ma')?.value ?? null
   const notizen = overlay?.querySelector('#grp-notizen')?.value || null
   if (overlay) overlay.remove()
+  window._gruppeIds = null
   for (const id of ids) {
     const patch = {}
     if (farbe !== null) patch.prioritaet_farbe = farbe || null
