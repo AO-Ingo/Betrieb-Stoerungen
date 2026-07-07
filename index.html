@@ -952,10 +952,36 @@ function alleAbwaehlen() {
 }
 
 async function ausgewaehltErledigt() {
-  const loesung = prompt('Lösungsgrund für alle ausgewählten Stationen:', 'Nach Neustart stromlos wieder online')
-  if (loesung === null) return
+  const overlay = document.createElement('div')
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center'
+  const optionsHtml = ['Neustart stromlos','Neustart RMS','Router Neustart','Softwareupdate','Serviceeinsatz','Kein Eingriff','Sonstiges'].map(l=>`<option value="${l}">${l}</option>`).join('')
+  overlay.innerHTML = `<div style="background:#fff;border-radius:10px;padding:20px;min-width:300px;box-shadow:0 8px 30px rgba(0,0,0,0.2)">
+    <div style="font-size:14px;font-weight:600;margin-bottom:14px">Lösungsgrund (${selectedCards.size} Stationen)</div>
+    <select id="sammel-loesung" style="width:100%;padding:7px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;margin-bottom:8px">
+      <option value="">– Bitte wählen –</option>${optionsHtml}
+    </select>
+    <input id="sammel-sonstiges" placeholder="Beschreibung…" style="display:none;width:100%;padding:6px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;margin-bottom:8px">
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button onclick="this.closest('[style*=fixed]').remove()" style="padding:7px 14px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;cursor:pointer;font-size:13px">Abbrechen</button>
+      <button onclick="bestaetigeAusgewaehltErledigt()" style="padding:7px 14px;border:none;border-radius:8px;background:#16a34a;color:#fff;cursor:pointer;font-size:13px;font-weight:500">✓ Erledigt markieren</button>
+    </div>
+  </div>`
+  overlay.querySelector('#sammel-loesung').addEventListener('change', function() {
+    overlay.querySelector('#sammel-sonstiges').style.display = this.value === 'Sonstiges' ? 'block' : 'none'
+  })
+  document.body.appendChild(overlay)
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove() })
+}
+
+async function bestaetigeAusgewaehltErledigt() {
+  const overlay = document.querySelector('[style*="position:fixed"][style*="z-index:200"]')
+  const sel = overlay?.querySelector('#sammel-loesung')
+  const sonst = overlay?.querySelector('#sammel-sonstiges')
+  const loesung = sel?.value === 'Sonstiges' ? 'Sonstiges: ' + (sonst?.value||'') : sel?.value
+  if (!loesung) { alert('Bitte einen Lösungsgrund wählen.'); return }
+  if (overlay) overlay.remove()
   for (const id of selectedCards) {
-    await sb(`stationen?id=eq.${id}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ erledigt: true, loesung: loesung||null }) })
+    await sb(`stationen?id=eq.${id}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ erledigt: true, loesung }) })
   }
   selectedCards.clear()
   await loadStationen()
