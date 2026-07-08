@@ -1406,7 +1406,7 @@ function renderList() {
   let html = ''
   for (const [key, karten] of gruppenMap) {
     // Karten die mit gruppe_id getrennt wurden, separat anzeigen
-    const getrennte = karten.filter(s => s.gruppe_id === null || s.gruppe_id === 'solo')
+    const getrennte = karten.filter(s => s.gruppe_id === 'solo')
     const gruppierte = karten.filter(s => s.gruppe_id !== 'solo')
 
     // Einzeln getrennte Karten
@@ -1497,14 +1497,14 @@ async function gruppeAufhebenByKey(key) {
   const ids = gruppenIdsMap[key] || []
   if (!ids.length) { alert('Gruppe nicht gefunden'); return }
   for (const id of ids) {
-    await sb(`stationen?id=eq.${id}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ gruppe_id: null }) })
+    await sb(`stationen?id=eq.${id}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ gruppe_id: 'solo' }) })
   }
   await loadStationen()
 }
 
 async function gruppeAufheben(gruppeId, ids) {
   for (const id of ids) {
-    await sb(`stationen?id=eq.${id}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ gruppe_id: null }) })
+    await sb(`stationen?id=eq.${id}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ gruppe_id: 'solo' }) })
   }
   await loadStationen()
 }
