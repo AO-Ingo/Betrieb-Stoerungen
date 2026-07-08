@@ -807,9 +807,9 @@ async function addKommentar(stationId) {
     // @-Kürzel durch vollen Namen ersetzen
     const namenMap = { 'IV': 'Ingo Vogt', 'DS': 'Dmitrij Smolenski', 'FB': 'Ferdinand Busalt' }
     const textMitNamen = text
-      .replace(/@IV/gi, 'Ingo Vogt')
-      .replace(/@DS/gi, 'Dmitrij Smolenski')
-      .replace(/@FB/gi, 'Ferdinand Busalt')
+      .replace(/@IV/gi, '@Ingo Vogt')
+      .replace(/@DS/gi, '@Dmitrij Smolenski')
+      .replace(/@FB/gi, '@Ferdinand Busalt')
 
     await sb('kommentare', { method:'POST', body: JSON.stringify({ station_id: stationId, text: textMitNamen }) })
     input.value = ''
