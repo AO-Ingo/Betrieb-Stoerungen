@@ -2026,15 +2026,27 @@ async function doImport() {
       <div style="font-weight:600;font-size:14px;margin-bottom:8px">⚠ ${nichtMehrImport.length} Station(en) nicht mehr im Export</div>
       <div style="font-size:12px;color:#666;margin-bottom:10px">Diese Stationen stehen noch als aktiv in der Liste, tauchen aber im aktuellen Export nicht mehr auf. Möglicherweise wieder online?</div>
       <div style="max-height:200px;overflow-y:auto;margin-bottom:10px">
-        ${nichtMehrImport.map(s=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #fef3c7">
-          <input type="checkbox" class="rueckwaerts-check" data-id="${s.id}" checked style="width:16px;height:16px">
-          <span style="font-size:13px;flex:1">${s.kundenname||s.bezeichnung||s.interne_id}</span>
-          <span style="font-size:11px;font-family:monospace;color:#999">${s.interne_id}</span>
-          <span class="badge ${s.meldungstyp==='offline'?'badge-offline':'badge-stoerung'}" style="font-size:10px">${s.meldungstyp==='offline'?'Offline':'Störung'}</span>
+        ${nichtMehrImport.map(s=>`<div style="padding:8px 0;border-bottom:1px solid #fef3c7">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <input type="checkbox" class="rueckwaerts-check" data-id="${s.id}" checked style="width:16px;height:16px;flex-shrink:0">
+            <span style="font-size:13px;flex:1">${s.kundenname||s.bezeichnung||s.interne_id}</span>
+            <span style="font-size:11px;font-family:monospace;color:#999">${s.interne_id}</span>
+            <span class="badge ${s.meldungstyp==='offline'?'badge-offline':'badge-stoerung'}" style="font-size:10px">${s.meldungstyp==='offline'?'Offline':'Störung'}</span>
+          </div>
+          <select class="rueckwaerts-loesung" data-id="${s.id}" style="width:100%;padding:5px 8px;border:1px solid #fcd34d;border-radius:6px;font-size:12px;font-family:'DM Sans',sans-serif;background:#fffbeb">
+            <option value="">– Lösung wählen –</option>
+            <option value="Neustart stromlos">Neustart stromlos</option>
+            <option value="Neustart RMS">Neustart RMS</option>
+            <option value="Router Neustart">Router Neustart</option>
+            <option value="Softwareupdate">Softwareupdate</option>
+            <option value="Serviceeinsatz">Serviceeinsatz</option>
+            <option value="Kein Eingriff">Kein Eingriff</option>
+            <option value="Sonstiges">Sonstiges</option>
+          </select>
         </div>`).join('')}
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px"><select id="rueck-loesung" style="padding:5px 8px;border:1px solid #ddd;border-radius:6px;font-size:12px;font-family:'DM Sans',sans-serif"><option value="">– Lösung wählen –</option><option value="Neustart stromlos">Neustart stromlos</option><option value="Neustart RMS">Neustart RMS</option><option value="Router Neustart">Router Neustart</option><option value="Softwareupdate">Softwareupdate</option><option value="Serviceeinsatz">Serviceeinsatz</option><option value="Kein Eingriff">Kein Eingriff</option><option value="Sonstiges">Sonstiges</option></select><button class="btn btn-green btn-sm" onclick="markiereAusgewaehltErledigt()">✓ Erledigt markieren</button><button class="btn btn-secondary btn-sm" onclick="document.querySelectorAll('.rueckwaerts-check').forEach(cb=>cb.checked=false)">Alles abwählen</button><button class="btn btn-secondary btn-sm" onclick="document.querySelectorAll('.rueckwaerts-check').forEach(cb=>cb.checked=true)">Alles auswählen</button></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px"><button class="btn btn-green btn-sm" onclick="markiereAusgewaehltErledigt()">✓ Ausgewählte als erledigt markieren</button><button class="btn btn-secondary btn-sm" onclick="document.querySelectorAll('.rueckwaerts-check').forEach(cb=>cb.checked=false)">Alles abwählen</button><button class="btn btn-secondary btn-sm" onclick="document.querySelectorAll('.rueckwaerts-check').forEach(cb=>cb.checked=true)">Alles auswählen</button></div>
       </div>
     </div>` : '<div style="margin-top:12px;color:#16a34a;font-size:13px">✓ Alle aktiven Stationen sind noch im Export</div>'}
   `
@@ -2043,10 +2055,21 @@ async function doImport() {
 
 async function markiereAusgewaehltErledigt() {
   const checkboxen = document.querySelectorAll('.rueckwaerts-check:checked')
-  const loesung = document.getElementById('rueck-loesung')?.value || ''
-  if (!loesung) { alert('Bitte zuerst einen Lösungsgrund auswählen.'); return }
+  if (!checkboxen.length) { alert('Keine Stationen ausgewählt.'); return }
+
+  // Prüfe ob alle ein Dropdown ausgefüllt haben
+  let alleFilled = true
   for (const cb of checkboxen) {
     const id = cb.dataset.id
+    const sel = document.querySelector(`.rueckwaerts-loesung[data-id="${id}"]`)
+    if (!sel || !sel.value) { alleFilled = false; break }
+  }
+  if (!alleFilled) { alert('Bitte für jede Station einen Lösungsgrund auswählen.'); return }
+
+  for (const cb of checkboxen) {
+    const id = cb.dataset.id
+    const sel = document.querySelector(`.rueckwaerts-loesung[data-id="${id}"]`)
+    const loesung = sel ? sel.value : ''
     try {
       await sb(`stationen?id=eq.${id}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({ erledigt: true, loesung }) })
     } catch(e) {}
