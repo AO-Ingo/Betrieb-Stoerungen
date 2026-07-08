@@ -807,18 +807,18 @@ async function addKommentar(stationId) {
     // @-Kürzel durch vollen Namen ersetzen
     const namenMap = { 'IV': 'Ingo Vogt', 'DS': 'Dmitrij Smolenski', 'FB': 'Ferdinand Busalt' }
     const textMitNamen = text
-      .replace(/@IV/g, 'Ingo Vogt')
-      .replace(/@DS/g, 'Dmitrij Smolenski')
-      .replace(/@FB/g, 'Ferdinand Busalt')
+      .replace(/@IV/gi, 'Ingo Vogt')
+      .replace(/@DS/gi, 'Dmitrij Smolenski')
+      .replace(/@FB/gi, 'Ferdinand Busalt')
 
     await sb('kommentare', { method:'POST', body: JSON.stringify({ station_id: stationId, text: textMitNamen }) })
     input.value = ''
 
     // @-Erwähnungen erkennen
     const erwaehnte = []
-    if (/@iv/i.test(text)) erwaehnte.push('IV')
-    if (/@ds/i.test(text)) erwaehnte.push('DS')
-    if (/@fb/i.test(text)) erwaehnte.push('FB')
+    if (text.toUpperCase().includes('@IV')) erwaehnte.push('IV')
+    if (text.toUpperCase().includes('@DS')) erwaehnte.push('DS')
+    if (text.toUpperCase().includes('@FB')) erwaehnte.push('FB')
 
     if (erwaehnte.length > 0) {
       const s = stationen.find(x => x.id === stationId)
