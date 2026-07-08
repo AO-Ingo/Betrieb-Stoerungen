@@ -804,18 +804,24 @@ async function addKommentar(stationId) {
   const text = input ? input.value.trim() : ''
   if (!text) return
   try {
+    // @-Kürzel durch vollen Namen ersetzen
+    const namenMap = { 'IV': 'Ingo Vogt', 'DS': 'Dmitrij Smolenski', 'FB': 'Ferdinand Busalt' }
+    const textMitNamen = text
+      .replace(/@IV/g, 'Ingo Vogt')
+      .replace(/@DS/g, 'Dmitrij Smolenski')
+      .replace(/@FB/g, 'Ferdinand Busalt')
+
     await sb('kommentare', { method:'POST', body: JSON.stringify({ station_id: stationId, text: textMitNamen }) })
     input.value = ''
 
-    // @-Erwähnungen erkennen (Groß-/Kleinschreibung egal)
+    // @-Erwähnungen erkennen
     const erwaehnte = []
-    if (/@iv\b/i.test(text)) erwaehnte.push('IV')
-    if (/@ds\b/i.test(text)) erwaehnte.push('DS')
-    if (/@fb\b/i.test(text)) erwaehnte.push('FB')
+    if (/@iv/i.test(text)) erwaehnte.push('IV')
+    if (/@ds/i.test(text)) erwaehnte.push('DS')
+    if (/@fb/i.test(text)) erwaehnte.push('FB')
 
     if (erwaehnte.length > 0) {
       const s = stationen.find(x => x.id === stationId)
-      const namenMap = { 'IV': 'Ingo Vogt', 'DS': 'Dmitrij Smolenski', 'FB': 'Ferdinand Busalt' }
       for (const initialen of erwaehnte) {
         fetch('https://hook.eu2.make.com/sz2mliv7qcnp5q5kob7xkc92yfy05lj9', {
           method: 'POST',
