@@ -470,7 +470,17 @@ textarea.raw { width: 100%; height: 200px; font-family: 'DM Mono', monospace; fo
 <script>
 // MSAL wird nach DOM-Load initialisiert
 window.msalLogin = async function() {
-  if (!window._msalInstance) { alert('Authentifizierung wird geladen…'); return }
+  // Warte bis MSAL bereit ist (max 5 Sekunden)
+  let tries = 0
+  while (!window._msalInstance && tries < 50) {
+    await new Promise(r => setTimeout(r, 100))
+    tries++
+  }
+  if (!window._msalInstance) {
+    const el = document.getElementById('login-error')
+    if (el) el.textContent = 'Fehler: Authentifizierung konnte nicht geladen werden.'
+    return
+  }
   try {
     await window._msalInstance.loginRedirect({ scopes: ['User.Read'], prompt: 'select_account' })
   } catch(e) {
