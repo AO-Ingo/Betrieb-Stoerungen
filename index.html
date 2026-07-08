@@ -804,7 +804,7 @@ async function addKommentar(stationId) {
   const text = input ? input.value.trim() : ''
   if (!text) return
   try {
-    await sb('kommentare', { method:'POST', body: JSON.stringify({ station_id: stationId, text }) })
+    await sb('kommentare', { method:'POST', body: JSON.stringify({ station_id: stationId, text: textMitNamen }) })
     input.value = ''
 
     // @-Erwähnungen erkennen (Groß-/Kleinschreibung egal)
@@ -823,7 +823,7 @@ async function addKommentar(stationId) {
           body: JSON.stringify({
             initialen,
             name: namenMap[initialen] || initialen,
-            kommentar: text,
+            kommentar: textMitNamen,
             station: s ? (s.kundenname || s.bezeichnung || s.interne_id) : stationId,
             standort: s ? (s.standort || '') : '',
             interne_id: s ? s.interne_id : stationId,
