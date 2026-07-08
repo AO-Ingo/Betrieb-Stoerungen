@@ -906,8 +906,8 @@ async function erstelleTicket(stationId, typ) {
   const texte = {
     router: `<p>Guten Tag,</p><p>die Ladestation(en) und der Router am Standort ${standortName} sind aktuell offline.<br>Könnten Sie einmal einen Neustart des Routers veranlassen?</p><p>Den Neustart können Sie direkt mit der Reset-Taste am Gerät durchführen (Abb. ähnlich).<br>Wenn Sie diese ca. 4-5 Sekunden drücken blinken alle 5 LED's, die die Signalstärke anzeigen und der Reset wird durchgeführt.<br>Zu beachten ist nur, dass Sie die Taste nicht länger als 10 Sekunden drücken dürfen, dann würde ein Reset auf Werkseinstellungen durchgeführt und der Router müsste neu konfiguriert werden.</p><p><img src='https://raw.githubusercontent.com/AO-Ingo/Betrieb-Stoerungen/main/assets/router-reset.png' alt='Router Reset Taste' style='max-width:300px'></p><p>Betroffene EVSE-IDs: ${evseList}</p>`,
     station: `<p>Guten Tag,</p><p>die Ladepunkte am Standort "${standortName}" sind aktuell offline.<br>Der Router bzw. die SIM-Karte ist aber online, daher scheint es direkt an der Station "${s.interne_id}" zu liegen.<br>Könnten Sie vielleicht einmal einen Neustart veranlassen (durch aus- und wieder einsichern der Anlage)?</p><p>Falls der Ausfall planmäßig ist, würden wir uns auch über eine kurze Rückmeldung freuen.</p><p>Betroffene EVSE-IDs: ${evseList}</p>`,
-    stoerung_neustart: `<p>Guten Tag,</p><p>die Ladepunkte am Standort "${standortName}" melden aktuell eine Störung.<br>Der Router bzw. die SIM-Karte ist aber online, daher scheint es direkt an der Station "${s.interne_id}" zu liegen.<br>Könnten Sie vielleicht einmal einen Neustart veranlassen (durch aus- und wieder einsichern der Anlage)?</p><p>Falls der Ausfall planmäßig ist, würden wir uns auch über eine kurze Rückmeldung freuen.</p><p>Betroffene EVSE-IDs: ${evseList}</p>`,
-    stoerung_sicherung: `<p>Guten Tag,</p><p>die Ladepunkte am Standort "${standortName}" melden aktuell eine Störung.<br>Der Router bzw. die SIM-Karte ist aber online, daher scheint es direkt an der Station "${s.interne_id}" zu liegen und es scheint eine Sicherung gefallen zu sein.</p><p>Gibt es eine Haustechnik vor Ort, die sich die Station einmal ansehen und die Sicherung ggf. wieder umlegen könnte?</p><p>Falls der Ausfall planmäßig ist, würden wir uns auch über eine kurze Rückmeldung freuen.</p><p>Betroffene EVSE-IDs: ${evseList}</p>`
+    stoerung_neustart: `<p>Guten Tag,</p><p>die Ladepunkte (${evseList}) am Standort "${standortName}" melden aktuell eine Störung.</p><p>Könnten Sie die Station einmal auf Beschädigungen o.ä. untersuchen lassen und einen Neustart veranlassen (durch aus- und wieder einsichern der Anlage)?</p><p>Seriennummer der Station: ${s.interne_id}</p>`,
+    stoerung_sicherung: `<p>Guten Tag,</p><p>die Ladepunkte (${evseList}) am Standort "${standortName}" melden aktuell eine Störung.</p><p>Es scheint eine Sicherung gefallen zu sein.<br>Gibt es eine Haustechnik vor Ort, die sich die Station einmal ansehen und die Sicherung ggf. wieder umlegen könnte?</p><p>Seriennummer der Station: ${s.interne_id}</p>`
   }
 
   const betreff = {
@@ -1766,13 +1766,13 @@ function openDetail(id) {
   if (isErl) footer += `<button class="btn btn-success btn-sm" onclick="reaktivierenAusErledigt('${s.id}')">↩ Reaktivieren</button>`
   footer += `<button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="loeschen('${s.id}')">🗑</button>`
   if (isAktiv) {
-    footer += `<div style="width:100%;border-top:1px solid var(--border);margin-top:8px;padding-top:8px;display:flex;gap:6px;flex-wrap:wrap">`
+    footer += `<div style="width:100%;border-top:1px solid var(--border);margin-top:8px;padding-top:8px;display:flex;gap:6px;flex-direction:row;flex-wrap:wrap">`
     if (s.meldungstyp === 'offline') {
-      footer += `<button id="ticket-btn-router" class="btn btn-sm btn-secondary" onclick="erstelleTicket('${s.id}','router')">🔴 Ticket: Router offline</button>`
-      footer += `<button id="ticket-btn-station" class="btn btn-sm btn-secondary" onclick="erstelleTicket('${s.id}','station')">⚡ Ticket: Station offline</button>`
+      footer += `<button id="ticket-btn-router" class="btn btn-sm btn-secondary" onclick="erstelleTicket('${s.id}','router')">🔴 Router offline</button>`
+      footer += `<button id="ticket-btn-station" class="btn btn-sm btn-secondary" onclick="erstelleTicket('${s.id}','station')">⚡ Station offline</button>`
     } else {
-      footer += `<button id="ticket-btn-neustart" class="btn btn-sm btn-secondary" onclick="erstelleTicket('${s.id}','stoerung_neustart')">⚡ Ticket: Neustart stromlos</button>`
-      footer += `<button id="ticket-btn-sicherung" class="btn btn-sm btn-secondary" onclick="erstelleTicket('${s.id}','stoerung_sicherung')">🔌 Ticket: Sicherung gefallen</button>`
+      footer += `<button id="ticket-btn-neustart" class="btn btn-sm btn-secondary" onclick="erstelleTicket('${s.id}','stoerung_neustart')">⚡ Neustart stromlos</button>`
+      footer += `<button id="ticket-btn-sicherung" class="btn btn-sm btn-secondary" onclick="erstelleTicket('${s.id}','stoerung_sicherung')">🔌 Sicherung gefallen</button>`
     }
     footer += `</div>`
   }
