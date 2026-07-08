@@ -1424,6 +1424,8 @@ function renderList() {
       const maxFarbe = farben.includes('rot') ? '🔴' : farben.includes('gelb') ? '🟡' : farben.includes('gruen') ? '🟢' : ''
 
       // Farbklasse der Gruppe = stärkste Farbe
+      const grpKey = 'grp_' + gruppeId.replace(/-/g,'_')
+      gruppenIdsMap[grpKey] = gruppierte.map(s=>s.id)
       const grpFarbe = farben.includes('rot') ? ' rot' : farben.includes('gelb') ? ' gelb' : farben.includes('gruen') ? ' gruen' : ''
       // Badge der Gruppe
       const grpBadgeClass = gruppierte.some(s=>s.meldungstyp==='offline') ? 'badge-offline' : 'badge-stoerung'
