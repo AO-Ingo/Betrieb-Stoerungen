@@ -411,9 +411,9 @@ textarea.raw { width: 100%; height: 200px; font-family: 'DM Mono', monospace; fo
         <div class="detail-label">Farbcode</div>
         <select id="ns-farbe">
           <option value="">Kein Farbcode</option>
-          <option value="rot">🔴 Rot – sofortiger Handlungsbedarf</option>
-          <option value="gelb">🟡 Warten auf Kunden</option>
-          <option value="gruen">🟢 Grün – kein Handlungsbedarf</option>
+          <option value="rot">🔴 Rot – unmittelbarer Handlungsbedarf</option>
+          <option value="gelb">🟡 Gelb – Warten auf Kunden</option>
+          <option value="gruen">🟢 Grün – aktuell kein Handlungsbedarf</option>
         </select>
         <div class="detail-label">Notizen</div>
         <textarea id="ns-notizen" placeholder="Optional…" style="height:60px"></textarea>
@@ -1232,9 +1232,9 @@ async function bearbeiteGruppeById(ids) {
     <div style="font-size:11px;color:#999;margin-bottom:4px">Farbcode</div>
     <select id="grp-farbe" style="width:100%;padding:7px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;margin-bottom:10px">
       <option value="">Kein Farbcode</option>
-      <option value="rot" ${aktuellFarbe==='rot'?'selected':''}>🔴 Rot – sofortiger Handlungsbedarf</option>
-      <option value="gelb" ${aktuellFarbe==='gelb'?'selected':''}>🟡 Warten auf Kunden</option>
-      <option value="gruen" ${aktuellFarbe==='gruen'?'selected':''}>🟢 Grün – kein Handlungsbedarf</option>
+      <option value="rot" ${aktuellFarbe==='rot'?'selected':''}>🔴 Rot – unmittelbarer Handlungsbedarf</option>
+      <option value="gelb" ${aktuellFarbe==='gelb'?'selected':''}>🟡 Gelb – Warten auf Kunden</option>
+      <option value="gruen" ${aktuellFarbe==='gruen'?'selected':''}>🟢 Grün – aktuell kein Handlungsbedarf</option>
     </select>
     <div style="font-size:11px;color:#999;margin-bottom:4px">Mitarbeiter</div>
     <select id="grp-ma" style="width:100%;padding:7px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;margin-bottom:10px">
@@ -1452,7 +1452,7 @@ function renderList() {
               ${standort?`<span style="font-size:11px;color:var(--text3)">📍 ${standort}</span>`:''}
               ${grpKVorschau}
             </div>
-            <button class="btn btn-sm btn-secondary" style="font-size:11px;padding:2px 8px;flex-shrink:0" onclick="event.stopPropagation();gruppeAufheben('${gruppeId}',${JSON.stringify(gruppierte.map(s=>s.id))})" title="Gruppe aufheben">↗ Trennen</button>
+            <button class="btn btn-sm btn-secondary" style="font-size:11px;padding:2px 8px;flex-shrink:0" onclick="event.stopPropagation();gruppeAufhebenByKey('${grpKey}')" title="Gruppe aufheben">↗ Trennen</button>
               <button class="btn btn-sm btn-secondary" style="font-size:11px;padding:2px 8px;flex-shrink:0" onclick="event.stopPropagation();bearbeiteGruppe('${gruppeId}')">✏</button>
               ${(()=>{
                 const mas = [...new Set(gruppierte.map(s=>s.mitarbeiter).filter(Boolean))]
@@ -1489,6 +1489,15 @@ function toggleGruppe(id) {
     const isOpen = cards && cards.classList.contains('open')
     icon.textContent = isOpen ? '∧' : '∨'
   }
+}
+
+async function gruppeAufhebenByKey(key) {
+  const ids = gruppenIdsMap[key] || []
+  if (!ids.length) { alert('Gruppe nicht gefunden'); return }
+  for (const id of ids) {
+    await sb(`stationen?id=eq.${id}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ gruppe_id: 'solo' }) })
+  }
+  await loadStationen()
 }
 
 async function gruppeAufheben(gruppeId, ids) {
@@ -1678,9 +1687,9 @@ function openDetail(id) {
         <div class="detail-label">Farbcode</div>
         <select id="ef-farbe-${s.id}">
           <option value="">Kein Farbcode</option>
-          <option value="gruen" ${s.prioritaet_farbe==='gruen'?'selected':''}>🟢 Grün</option>
-          <option value="gelb" ${s.prioritaet_farbe==='gelb'?'selected':''}>🟡 Warten auf Kunden</option>
-          <option value="rot" ${s.prioritaet_farbe==='rot'?'selected':''}>🔴 Rot</option>
+          <option value="gruen" ${s.prioritaet_farbe==='gruen'?'selected':''}>🟢 Grün – aktuell kein Handlungsbedarf</option>
+          <option value="gelb" ${s.prioritaet_farbe==='gelb'?'selected':''}>🟡 Gelb – Warten auf Kunden</option>
+          <option value="rot" ${s.prioritaet_farbe==='rot'?'selected':''}>🔴 Rot – unmittelbarer Handlungsbedarf</option>
         </select>
         <div class="detail-label">Mitarbeiter</div>
         <select id="ef-ma-${s.id}">
