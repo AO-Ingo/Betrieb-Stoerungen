@@ -2154,6 +2154,68 @@ async function handleDeepLink() {
 
 loadBanner()
 handleDeepLink().then(handled => { if (!handled) loadStationen() })
+
+// MSAL Auth
+const msalConfig = {
+  auth: {
+    clientId: '33b01b8c-d1a2-420a-a316-6ddcaf90766a',
+    authority: 'https://login.microsoftonline.com/a3652b20-644b-4163-8ea8-f0d7f7b76b10',
+    redirectUri: 'https://ao-ingo.github.io/Betrieb-Stoerungen',
+  },
+  cache: { cacheLocation: 'sessionStorage', storeAuthStateInCookie: false }
+}
+
+async function initAuth() {
+  let w = 0
+  while (typeof msal === 'undefined' && w < 50) {
+    await new Promise(r => setTimeout(r, 100)); w++
+  }
+  if (typeof msal === 'undefined') {
+    document.getElementById('login-error').textContent = 'MSAL nicht geladen.'
+    return
+  }
+  const msalInst = new msal.PublicClientApplication(msalConfig)
+  window._msalInstance = msalInst
+
+  try {
+    const response = await msalInst.handleRedirectPromise()
+    if (response) { showApp(); return }
+  } catch(e) {
+    document.getElementById('login-error').textContent = 'Fehler: ' + e.message
+    return
+  }
+
+  const accounts = msalInst.getAllAccounts()
+  if (accounts.length > 0) {
+    showApp()
+  } else {
+    document.getElementById('login-page').style.display = 'flex'
+    document.getElementById('app').style.display = 'none'
+  }
+}
+
+window.msalLogin = async function() {
+  let w = 0
+  while (!window._msalInstance && w < 50) {
+    await new Promise(r => setTimeout(r, 100)); w++
+  }
+  if (!window._msalInstance) {
+    document.getElementById('login-error').textContent = 'Fehler: Authentifizierung nicht bereit.'
+    return
+  }
+  try {
+    await window._msalInstance.loginRedirect({ scopes: ['User.Read'], prompt: 'select_account' })
+  } catch(e) {
+    document.getElementById('login-error').textContent = 'Fehler: ' + e.message
+  }
+}
+
+function showApp() {
+  document.getElementById('login-page').style.display = 'none'
+  document.getElementById('app').style.display = 'flex'
+}
+
+initAuth()
 </script>
 </body>
 </html>
