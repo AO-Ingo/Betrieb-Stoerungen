@@ -1452,7 +1452,7 @@ function renderList() {
               ${standort?`<span style="font-size:11px;color:var(--text3)">📍 ${standort}</span>`:''}
               ${grpKVorschau}
             </div>
-            <button class="btn btn-sm btn-secondary" style="font-size:11px;padding:2px 8px;flex-shrink:0" onclick="event.stopPropagation();gruppeAufhebenByKey('grp_${gruppeId.replace(/-/g,\'_\')}')" title="Gruppe aufheben">↗ Trennen</button>
+            <button class="btn btn-sm btn-secondary" style="font-size:11px;padding:2px 8px;flex-shrink:0" data-grpkey="${grpKey}" onclick="event.stopPropagation();gruppeAufhebenByKey(this.dataset.grpkey)" title="Gruppe aufheben">↗ Trennen</button>
               <button class="btn btn-sm btn-secondary" style="font-size:11px;padding:2px 8px;flex-shrink:0" onclick="event.stopPropagation();bearbeiteGruppe('${gruppeId}')">✏</button>
               ${(()=>{
                 const mas = [...new Set(gruppierte.map(s=>s.mitarbeiter).filter(Boolean))]
