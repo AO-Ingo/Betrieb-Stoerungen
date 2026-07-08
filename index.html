@@ -815,12 +815,14 @@ async function addKommentar(stationId) {
 
     if (erwaehnte.length > 0) {
       const s = stationen.find(x => x.id === stationId)
+      const namenMap = { 'IV': 'Ingo Vogt', 'DS': 'Dmitrij Smolenski', 'FB': 'Ferdinand Busalt' }
       for (const initialen of erwaehnte) {
         fetch('https://hook.eu2.make.com/sz2mliv7qcnp5q5kob7xkc92yfy05lj9', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             initialen,
+            name: namenMap[initialen] || initialen,
             kommentar: text,
             station: s ? (s.kundenname || s.bezeichnung || s.interne_id) : stationId,
             standort: s ? (s.standort || '') : '',
