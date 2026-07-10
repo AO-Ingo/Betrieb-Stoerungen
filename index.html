@@ -1762,6 +1762,15 @@ function openDetail(id) {
     <!-- Kommentare -->
     <div style="border-top:1px solid var(--border);padding-top:12px">
       <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Verlauf & Kommentare</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px">
+        ${s.meldungstyp==='offline'?`
+          <button onclick="document.getElementById('dp-kommentar-input').value='Router Neustart erbeten'" style="font-size:11px;padding:3px 8px;border:1px solid var(--border2);border-radius:20px;background:var(--bg);cursor:pointer;color:var(--text2);font-family:'DM Sans',sans-serif">Router Neustart erbeten</button>
+          <button onclick="document.getElementById('dp-kommentar-input').value='Neustart stromlos erbeten'" style="font-size:11px;padding:3px 8px;border:1px solid var(--border2);border-radius:20px;background:var(--bg);cursor:pointer;color:var(--text2);font-family:'DM Sans',sans-serif">Neustart stromlos erbeten</button>
+        `:`
+          <button onclick="document.getElementById('dp-kommentar-input').value='Neustart stromlos erbeten'" style="font-size:11px;padding:3px 8px;border:1px solid var(--border2);border-radius:20px;background:var(--bg);cursor:pointer;color:var(--text2);font-family:'DM Sans',sans-serif">Neustart stromlos erbeten</button>
+          <button onclick="document.getElementById('dp-kommentar-input').value='Kunden informiert und angefragt, ob es einen Haustechniker gibt, der die Sicherung wieder einlegen kann'" style="font-size:11px;padding:3px 8px;border:1px solid var(--border2);border-radius:20px;background:var(--bg);cursor:pointer;color:var(--text2);font-family:'DM Sans',sans-serif">Sicherung – Haustechniker angefragt</button>
+        `}
+      </div>
       <div style="display:flex;gap:6px;margin-bottom:10px;position:relative">
         <input id="dp-kommentar-input" placeholder="Neuer Kommentar… (@ für Erwähnung)" style="flex:1;padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif;background:var(--bg2)" autocomplete="off" oninput="mentionCheck(this)" onkeydown="mentionKeydown(event,'${s.id}')">
         <button class="btn btn-primary btn-sm" onclick="addKommentar('${s.id}')">+ Hinzufügen</button>
