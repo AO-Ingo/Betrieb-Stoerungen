@@ -1583,9 +1583,9 @@ function cardHTML(s) {
     ? '<span title="Router offline" style="color:#dc2626;font-size:12px;line-height:1">🔴</span>'
     : ''
 
-  // Neuester Kommentar
+  // Neuester Kommentar oder Lösung (bei erledigten)
   const neusterK = (s.kommentare||[]).sort((a,b)=>new Date(b.erstellt_am)-new Date(a.erstellt_am))[0]
-  const kVorschau = neusterK ? neusterK.text : ''
+  const kVorschau = s.erledigt && s.loesung ? s.loesung : (neusterK ? neusterK.text : '')
 
   // Fälligkeit
   let faelligHtml = ''
