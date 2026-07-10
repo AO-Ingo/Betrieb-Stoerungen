@@ -1603,6 +1603,16 @@ function cardHTML(s) {
   const neusterK = (s.kommentare||[]).sort((a,b)=>new Date(b.erstellt_am)-new Date(a.erstellt_am))[0]
   const kVorschau = s.erledigt && s.loesung ? s.loesung : (neusterK ? neusterK.text : '')
 
+  // Gelb + 7 Tage vergangen = Erinnerung
+  let gelbeErinnerung = ''
+  if (s.prioritaet_farbe === 'gelb' && !s.erledigt && !s.irrelevant) {
+    const erstellt = new Date(s.aktualisiert_am || s.erstellt_am)
+    const diffTage = Math.floor((new Date() - erstellt) / (1000*60*60*24))
+    if (diffTage >= 7) {
+      gelbeErinnerung = `<span style="font-size:11px;color:#d97706;font-weight:600">${'<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" style=\"display:inline;vertical-align:middle;margin-right:3px\"><path d=\"M12 2L2 20h20L12 2z\" stroke=\"#d97706\" stroke-width=\"2\" stroke-linejoin=\"round\" fill=\"none\"/><line x1=\"12\" y1=\"9\" x2=\"12\" y2=\"14\" stroke=\"#d97706\" stroke-width=\"2\" stroke-linecap=\"round\"/><circle cx=\"12\" cy=\"17\" r=\"1\" fill=\"#d97706\"/></svg>'}7 Tage – Nachhaken</span>`
+    }
+  }
+
   // Fälligkeit
   let faelligHtml = ''
   if (faelligStr) {
@@ -1633,7 +1643,8 @@ function cardHTML(s) {
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:3px;gap:8px">
       <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;overflow:hidden;flex-wrap:wrap">
         ${s.standort?`<span style="font-size:11px;color:var(--text3);flex-shrink:0">📍 ${s.standort}</span>`:''}
-        ${kVorschau?`<span style="font-size:11px;color:var(--text2);background:var(--bg2);border-left:2px solid var(--orange);padding:1px 6px;border-radius:0 3px 3px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:250px">💬 ${kVorschau}</span>`:''}
+        ${gelbeErinnerung}
+        ${!gelbeErinnerung && kVorschau?`<span style="font-size:11px;color:var(--text2);background:var(--bg2);border-left:2px solid var(--orange);padding:1px 6px;border-radius:0 3px 3px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:250px">💬 ${kVorschau}</span>`:''}
         ${faelligHtml}
       </div>
       <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;white-space:nowrap;flex-shrink:0">${s.interne_id}</span>
