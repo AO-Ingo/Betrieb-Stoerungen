@@ -369,6 +369,13 @@ textarea.raw { width: 100%; height: 200px; font-family: 'DM Mono', monospace; fo
       <button class="btn btn-sm" style="background:#fff;color:#222" onclick="alleAbwaehlen()">✕ Abwählen</button>
       <button class="btn btn-sm" style="background:#16a34a;color:#fff" onclick="ausgewaehltErledigt()">✓ Erledigt</button>
       <button class="btn btn-sm" style="background:#6b7280;color:#fff" onclick="ausgewaehltIrrelevant()">○ Irrelevant</button>
+      <select onchange="ausgewaehltFarbe(this.value);this.value=''" style="padding:4px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.15);color:#fff;font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer">
+        <option value="">🎨 Farbe</option>
+        <option value="rot">🔴 Rot</option>
+        <option value="gelb">🟡 Gelb</option>
+        <option value="gruen">🟢 Grün</option>
+        <option value="">– Kein Farbcode</option>
+      </select>
       <button class="btn btn-sm" style="background:#dc2626;color:#fff" onclick="ausgewaehltLoeschen()">🗑 Löschen</button>
     </div>
     <div class="detail-panel" id="detail-panel">
@@ -1219,7 +1226,7 @@ async function bestaetigeAusgewaehltErledigt() {
   if (!loesung) { alert('Bitte einen Lösungsgrund wählen.'); return }
   if (overlay) overlay.remove()
   for (const id of selectedCards) {
-    await sb(`stationen?id=eq.${id}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ erledigt: true, loesung }) })
+    await sb(`stationen?id=eq.${id}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ erledigt: true, loesung, prioritaet_farbe: "gruen" }) })
   }
   selectedCards.clear()
   await loadStationen()
@@ -1230,6 +1237,15 @@ async function ausgewaehltIrrelevant() {
   if (grund === null) return
   for (const id of selectedCards) {
     await sb(`stationen?id=eq.${id}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ irrelevant: true, irrelevant_grund: grund||null }) })
+  }
+  selectedCards.clear()
+  await loadStationen()
+}
+
+async function ausgewaehltFarbe(farbe) {
+  if (!farbe && farbe !== '') return
+  for (const id of selectedCards) {
+    await sb(`stationen?id=eq.${id}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ prioritaet_farbe: farbe || null }) })
   }
   selectedCards.clear()
   await loadStationen()
@@ -1876,7 +1892,7 @@ async function markiereErledigt(id) {
   const sonst = document.getElementById('dp-erl-sonstiges')
   const loesung = sel ? (sel.value === 'Sonstiges' && sonst ? sel.value + ': ' + sonst.value : sel.value) : (document.getElementById('erl-txt-'+id)||{}).value||''
   try {
-    await sb(`stationen?id=eq.${id}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({ erledigt: true, loesung: loesung||null }) })
+    await sb(`stationen?id=eq.${id}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({ erledigt: true, loesung: loesung||null, prioritaet_farbe: "gruen" }) })
     loadStationen()
   } catch(e) { alert('Fehler: '+e.message) }
 }
@@ -2130,7 +2146,7 @@ async function markiereAusgewaehltErledigt() {
     const sel = document.querySelector(`.rueckwaerts-loesung[data-id="${id}"]`)
     const loesung = sel ? sel.value : ''
     try {
-      await sb(`stationen?id=eq.${id}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({ erledigt: true, loesung }) })
+      await sb(`stationen?id=eq.${id}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({ erledigt: true, loesung, prioritaet_farbe: "gruen" }) })
     } catch(e) {}
   }
   closeImport()
