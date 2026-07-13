@@ -869,6 +869,7 @@ async function addKommentar(stationId) {
       .replace(/@FB/gi, '@Ferdinand Busalt')
 
     await sb('kommentare', { method:'POST', body: JSON.stringify({ station_id: stationId, text: textMitNamen }) })
+    await sbPatchStation(stationId, {})
     input.value = ''
 
     // @-Erwähnungen erkennen
@@ -940,7 +941,7 @@ async function speichereLoesung(id) {
   const loesung = sel ? (sel.value === 'Sonstiges' ? 'Sonstiges: ' + (sonst?.value||'') : sel.value) : ''
   if (overlay) overlay.remove()
   try {
-    await sb(`stationen?id=eq.${id}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({ loesung }) })
+    await sbPatchStation(id, { loesung })
     await loadStationen()
     openDetail(id)
   } catch(e) { alert('Fehler: '+e.message) }
@@ -948,7 +949,7 @@ async function speichereLoesung(id) {
 
 async function resetNachhaken(id) {
   try {
-    await sb(`stationen?id=eq.${id}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({ aktualisiert_am: new Date().toISOString() }) })
+    await sbPatchStation(id, { aktualisiert_am: new Date().toISOString() })
     await loadStationen()
     openDetail(id)
   } catch(e) { alert('Fehler: '+e.message) }
@@ -1234,7 +1235,7 @@ async function bestaetigeAusgewaehltErledigt() {
   if (!loesung) { alert('Bitte einen Lösungsgrund wählen.'); return }
   if (overlay) overlay.remove()
   for (const id of selectedCards) {
-    await sb(`stationen?id=eq.${id}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ erledigt: true, loesung, prioritaet_farbe: "gruen" }) })
+    await sbPatchStation(id, { erledigt: true, loesung, prioritaet_farbe: 'gruen' })
   }
   selectedCards.clear()
   await loadStationen()
@@ -1253,7 +1254,7 @@ async function ausgewaehltIrrelevant() {
 async function ausgewaehltFarbe(farbe) {
   if (!farbe && farbe !== '') return
   for (const id of selectedCards) {
-    await sb(`stationen?id=eq.${id}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ prioritaet_farbe: farbe || null }) })
+    await sbPatchStation(id, { prioritaet_farbe: farbe || null })
   }
   selectedCards.clear()
   await loadStationen()
@@ -1379,7 +1380,7 @@ async function chooseGruppeMitarbeiter(initialen) {
   window._grpMaIds = null
   document.querySelector('.app-overlay')?.remove()
   for (const id of ids) {
-    await sb(`stationen?id=eq.${id}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ mitarbeiter: initialen }) })
+    await sbPatchStation(id, { mitarbeiter: initialen })
   }
   await loadStationen()
 }
@@ -1408,7 +1409,7 @@ async function setMitarbeiter(id) {
 
 async function chooseMitarbeiter(id, initialen, el) {
   document.querySelector('.app-overlay')?.remove()
-  await sb(`stationen?id=eq.${id}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ mitarbeiter: initialen }) })
+  await sbPatchStation(id, { mitarbeiter: initialen })
   await loadStationen()
   if (currentStation && currentStation.id === id) openDetail(id)
 }
@@ -1929,7 +1930,7 @@ async function markiereIrrelevant(id) {
 
 async function reaktivieren(id) {
   try {
-    await sb(`stationen?id=eq.${id}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({ irrelevant: false, irrelevant_grund: null }) })
+    await sbPatchStation(id, { irrelevant: false, irrelevant_grund: null })
     loadStationen()
   } catch(e) { alert('Fehler: '+e.message) }
 }
@@ -1937,7 +1938,7 @@ async function reaktivieren(id) {
 async function reaktivierenAusErledigt(id) {
   if (!confirm('Station reaktivieren und zurück in die aktive Liste verschieben?')) return
   try {
-    await sb(`stationen?id=eq.${id}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({ erledigt: false, loesung: null }) })
+    await sbPatchStation(id, { erledigt: false, loesung: null })
     closeDetail()
     loadStationen()
   } catch(e) { alert('Fehler: '+e.message) }
