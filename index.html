@@ -1207,7 +1207,7 @@ function alleAbwaehlen() {
 async function ausgewaehltErledigt() {
   const overlay = document.createElement('div')
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center'; overlay.className = 'app-overlay'
-  const optionsHtml = ['Neustart stromlos','Neustart RMS','Router Neustart','Softwareupdate','Serviceeinsatz','Kein Eingriff','Sonstiges'].map(l=>`<option value="${l}">${l}</option>`).join('')
+  const optionsHtml = ['Neustart stromlos','Neustart RMS','Router Neustart','Softwareupdate','Serviceeinsatz','Sicherung umgelegt','Kein Eingriff','Sonstiges'].map(l=>`<option value="${l}">${l}</option>`).join('')
   overlay.innerHTML = `<div style="background:#fff;border-radius:10px;padding:20px;min-width:300px;box-shadow:0 8px 30px rgba(0,0,0,0.2)">
     <div style="font-size:14px;font-weight:600;margin-bottom:14px">Lösungsgrund (${selectedCards.size} Stationen)</div>
     <select id="sammel-loesung" style="width:100%;padding:7px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;margin-bottom:8px">
@@ -1444,7 +1444,7 @@ async function updateCounts() {
 }
 
 const TAB_LABELS = { 'offline':'Offline','stoerung':'Störung','erl-offline':'Offline erledigt','erl-stoerung':'Störung erledigt','irr-offline':'Offline irrelevant','irr-stoerung':'Störung irrelevant','statistik':'Statistik' }
-const LOESUNGEN = ['Neustart stromlos', 'Neustart RMS', 'Router Neustart', 'Softwareupdate', 'Serviceeinsatz', 'Kein Eingriff', 'Sonstiges']
+const LOESUNGEN = ['Neustart stromlos', 'Neustart RMS', 'Router Neustart', 'Softwareupdate', 'Serviceeinsatz', 'Sicherung umgelegt', 'Kein Eingriff', 'Sonstiges']
 
 function setTab(t) {
   tab = t
