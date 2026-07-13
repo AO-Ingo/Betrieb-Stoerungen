@@ -946,6 +946,14 @@ async function speichereLoesung(id) {
   } catch(e) { alert('Fehler: '+e.message) }
 }
 
+async function resetNachhaken(id) {
+  try {
+    await sb(`stationen?id=eq.${id}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({ aktualisiert_am: new Date().toISOString() }) })
+    await loadStationen()
+    openDetail(id)
+  } catch(e) { alert('Fehler: '+e.message) }
+}
+
 async function setUmfang(stationId, value) {
   try {
     await sb(`stationen?id=eq.${stationId}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({ betroffener_umfang: value||null }) })
