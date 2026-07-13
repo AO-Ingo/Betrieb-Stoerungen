@@ -869,7 +869,7 @@ async function addKommentar(stationId) {
       .replace(/@FB/gi, '@Ferdinand Busalt')
 
     await sb('kommentare', { method:'POST', body: JSON.stringify({ station_id: stationId, text: textMitNamen }) })
-    await sbPatchStation(stationId, {})
+    await sbPatchStation(stationId, { aktualisiert_am: new Date().toISOString() })
     input.value = ''
 
     // @-Erwähnungen erkennen
