@@ -1614,10 +1614,10 @@ function cardHTML(s) {
   // Gelb + 7 Tage vergangen = Erinnerung
   let gelbeErinnerung = ''
   if (s.prioritaet_farbe === 'gelb' && !s.erledigt && !s.irrelevant) {
-    const erstellt = new Date(s.aktualisiert_am || s.erstellt_am)
-    const diffTage = Math.floor((new Date() - erstellt) / (1000*60*60*24))
+    const ref = new Date(s.aktualisiert_am || s.erstellt_am)
+    const diffTage = Math.floor((new Date() - ref) / (1000*60*60*24))
     if (diffTage >= 7) {
-      gelbeErinnerung = `<span style="font-size:11px;color:#d97706;font-weight:600">${'<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" style=\"display:inline;vertical-align:middle;margin-right:3px\"><path d=\"M12 2L2 20h20L12 2z\" stroke=\"#d97706\" stroke-width=\"2\" stroke-linejoin=\"round\" fill=\"none\"/><line x1=\"12\" y1=\"9\" x2=\"12\" y2=\"14\" stroke=\"#d97706\" stroke-width=\"2\" stroke-linecap=\"round\"/><circle cx=\"12\" cy=\"17\" r=\"1\" fill=\"#d97706\"/></svg>'}7 Tage – Nachhaken</span>`
+      gelbeErinnerung = `<span style="font-size:11px;color:var(--text3)">⏰ ${diffTage} Tage – Nachhaken</span>`
     }
   }
 
