@@ -905,7 +905,7 @@ async function addKommentar(stationId) {
 
 async function setRouterOnline(stationId, value) {
   try {
-    await sbPatchStation(stationId, { router_online: value }) })
+    await sbPatchStation(stationId, { router_online: value })
     await loadStationen()
     openDetail(stationId)
   } catch(e) { alert('Fehler: '+e.message) }
