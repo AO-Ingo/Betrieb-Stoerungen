@@ -1500,7 +1500,7 @@ function gruppenBlockHTML(key, gruppierte, manual) {
   const dashboards = [...new Set(gruppierte.map(s => s.kundenname).filter(Boolean))]
   const standort = manual ? '' : (gruppierte[0].standort || gruppierte[0].kundenname || '–')
   const dashboard = manual
-    ? '🔗 Manuelle Gruppe' + (dashboards.length ? ' – ' + dashboards.join(', ') : '')
+    ? (dashboards.length ? dashboards.join(', ') : '–')
     : (gruppierte[0].kundenname || '–')
   const gruppeId = 'grp-' + key.replace(/[^a-zA-Z0-9]/g, '-')
   const farben = gruppierte.map(s => s.prioritaet_farbe).filter(Boolean)
