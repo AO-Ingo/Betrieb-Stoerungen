@@ -905,7 +905,7 @@ async function addKommentar(stationId) {
 
 async function setRouterOnline(stationId, value) {
   try {
-    await sb(`stationen?id=eq.${stationId}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({ router_online: value }) })
+    await sbPatchStation(stationId, { router_online: value }) })
     await loadStationen()
     openDetail(stationId)
   } catch(e) { alert('Fehler: '+e.message) }
@@ -957,7 +957,7 @@ async function resetNachhaken(id) {
 
 async function setUmfang(stationId, value) {
   try {
-    await sb(`stationen?id=eq.${stationId}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({ betroffener_umfang: value||null }) })
+    await sbPatchStation(stationId, { betroffener_umfang: value||null }) })
     await loadStationen()
     openDetail(stationId)
   } catch(e) { alert('Fehler: '+e.message) }
@@ -1344,7 +1344,7 @@ async function speichereGruppe() {
     if (ma !== null) patch.mitarbeiter = ma || null
     if (notizen) patch.notizen = notizen
     if (Object.keys(patch).length) {
-      await sb(`stationen?id=eq.${id}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify(patch) })
+      await sbPatchStation(id, patch)
     }
   }
   await loadStationen()
@@ -1572,14 +1572,14 @@ async function gruppeAufhebenByKey(key) {
   const ids = gruppenIdsMap[key] || []
   if (!ids.length) { alert('Gruppe nicht gefunden'); return }
   for (const id of ids) {
-    await sb(`stationen?id=eq.${id}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ gruppe_id: 'solo' }) })
+    await sbPatchStation(id, { gruppe_id: 'solo' })
   }
   await loadStationen()
 }
 
 async function gruppeAufheben(gruppeId, ids) {
   for (const id of ids) {
-    await sb(`stationen?id=eq.${id}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ gruppe_id: 'solo' }) })
+    await sbPatchStation(id, { gruppe_id: 'solo' })
   }
   await loadStationen()
 }
@@ -2084,7 +2084,7 @@ async function doImport() {
       const ex = await sb(`stationen?interne_id=eq.${encodeURIComponent(s.interne_id)}${bezFilter}&erledigt=eq.false&select=id,meldungstyp`)
       if (ex&&ex.length) {
         const e=ex[0]
-        if (e.meldungstyp==='stoerung'&&s.meldungstyp==='offline') await sb(`stationen?id=eq.${e.id}`,{method:'PATCH',prefer:'return=minimal',body:JSON.stringify({meldungstyp:'offline'})})
+        if (e.meldungstyp==='stoerung'&&s.meldungstyp==='offline') await sbPatchStation(e.id, {meldungstyp:'offline'})
         for (const p of s.ladepunkte) {
           if (!p.evse_id) continue
           const elp=await sb(`ladepunkte?station_id=eq.${e.id}&evse_id=eq.${encodeURIComponent(p.evse_id)}&select=id`)
