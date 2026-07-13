@@ -359,7 +359,7 @@ textarea.raw { width: 100%; height: 200px; font-family: 'DM Mono', monospace; fo
       <input type="text" id="search-all" placeholder="Alle Tabs durchsuchen…" oninput="sucheAlleTabsDebounced()">
     </div>
     <select id="sortierung" class="sort-select" onchange="renderList()" style="margin-left:8px">
-      <option value="standard">Sortieren: Standard</option>
+      <option value="standard">Sortieren: Erstelldatum</option>
       <option value="farbe">Sortieren: Farbe</option>
       <option value="mitarbeiter">Sortieren: Mitarbeiter</option>
       <option value="aktualisiert">Sortieren: Zuletzt bearbeitet</option>
@@ -381,6 +381,7 @@ textarea.raw { width: 100%; height: 200px; font-family: 'DM Mono', monospace; fo
       <button class="btn btn-sm" style="background:#fff;color:#222" onclick="alleAbwaehlen()">✕ Abwählen</button>
       <button class="btn btn-sm" style="background:#16a34a;color:#fff" onclick="ausgewaehltErledigt()">✓ Erledigt</button>
       <button class="btn btn-sm" style="background:#6b7280;color:#fff" onclick="ausgewaehltIrrelevant()">○ Irrelevant</button>
+      <button class="btn btn-sm" id="btn-gruppieren" style="background:#e8581a;color:#fff;display:none" onclick="gruppiereAusgewaehlte()">🔗 Gruppieren</button>
       <select onchange="ausgewaehltFarbe(this.value);this.value=''" style="padding:4px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.15);color:#fff;font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer">
         <option value="">🎨 Farbe</option>
         <option value="rot">🔴 Rot</option>
@@ -1199,12 +1200,26 @@ function toggleCard(id) {
 function updateAktionsleiste() {
   const bar = document.getElementById('aktionsleiste')
   const info = document.getElementById('aktionsleiste-info')
+  const btnGruppieren = document.getElementById('btn-gruppieren')
   if (selectedCards.size > 0) {
     bar.classList.add('visible')
     info.textContent = selectedCards.size + ' ausgewählt'
+    if (btnGruppieren) btnGruppieren.style.display = selectedCards.size >= 2 ? '' : 'none'
   } else {
     bar.classList.remove('visible')
   }
+}
+
+async function gruppiereAusgewaehlte() {
+  if (selectedCards.size < 2) return
+  const ids = [...selectedCards]
+  if (!confirm(ids.length + ' Stationen zu einer manuellen Gruppe zusammenfassen?')) return
+  const neueGruppeId = crypto.randomUUID()
+  for (const id of ids) {
+    await sbPatchStation(id, { gruppe_id: neueGruppeId })
+  }
+  selectedCards.clear()
+  await loadStationen()
 }
 
 function alleAbwaehlen() {
@@ -1473,9 +1488,12 @@ function setTab(t) {
   loadStationen()
 }
 
-function gruppenBlockHTML(key, gruppierte) {
-  const standort = gruppierte[0].standort || gruppierte[0].kundenname || '–'
-  const dashboard = gruppierte[0].kundenname || '–'
+function gruppenBlockHTML(key, gruppierte, manual) {
+  const dashboards = [...new Set(gruppierte.map(s => s.kundenname).filter(Boolean))]
+  const standort = manual ? '' : (gruppierte[0].standort || gruppierte[0].kundenname || '–')
+  const dashboard = manual
+    ? '🔗 Manuelle Gruppe' + (dashboards.length ? ' – ' + dashboards.join(', ') : '')
+    : (gruppierte[0].kundenname || '–')
   const gruppeId = 'grp-' + key.replace(/[^a-zA-Z0-9]/g, '-')
   const farben = gruppierte.map(s => s.prioritaet_farbe).filter(Boolean)
 
@@ -1528,7 +1546,7 @@ function gruppenBlockHTML(key, gruppierte) {
           </div>
         </div>
         <div class="gruppe-cards" id="${gruppeId}">
-          ${gruppierte.map(cardHTML).join('')}
+          ${gruppierte.map(s => cardHTML(s, true)).join('')}
         </div>
       </div>`
 }
@@ -1541,27 +1559,35 @@ function renderList() {
     .filter(s => !q || [s.kundenname,s.interne_id,s.standort,s.bezeichnung].some(v=>(v||'').toLowerCase().includes(q)) || (s.ladepunkte||[]).some(lp=>(lp.evse_id||'').toLowerCase().includes(q)))
   if (!f.length) { document.getElementById('list').innerHTML = `<div class="empty"><div style="font-size:40px">○</div><div>Keine Einträge</div></div>`; return }
 
-  // Gruppiere nach Dashboard + Standort (nur wenn beide gleich und > 1 Karte)
-  const gruppenMap = new Map()
+  const entries = []
+
+  // 1. Solo-Karten raustrennen, manuelle Gruppen (echte gruppe_id-UUID) unabhängig von Dashboard/Standort bilden
+  const manualGroups = new Map()
+  const rest = []
   for (const s of f) {
+    if (s.gruppe_id === 'solo') { entries.push({ type: 'solo', station: s }); continue }
+    if (s.gruppe_id) {
+      if (!manualGroups.has(s.gruppe_id)) manualGroups.set(s.gruppe_id, [])
+      manualGroups.get(s.gruppe_id).push(s)
+      continue
+    }
+    rest.push(s)
+  }
+  for (const [gid, karten] of manualGroups) {
+    if (karten.length === 1) entries.push({ type: 'solo', station: karten[0] })
+    else entries.push({ type: 'gruppe', key: 'manual-' + gid, karten, manual: true })
+  }
+
+  // 2. Übrige Karten (ohne gruppe_id) wie bisher nach Dashboard + Standort gruppieren
+  const gruppenMap = new Map()
+  for (const s of rest) {
     const key = (s.kundenname||'') + '|||' + (s.standort||'')
     if (!gruppenMap.has(key)) gruppenMap.set(key, [])
     gruppenMap.get(key).push(s)
   }
-
-  // Flache Liste aus Einzelkarten + Gruppen-Blöcken bauen, damit einheitlich sortiert werden kann
-  const entries = []
   for (const [key, karten] of gruppenMap) {
-    const getrennte = karten.filter(s => s.gruppe_id === 'solo')
-    const gruppierte = karten.filter(s => s.gruppe_id !== 'solo')
-
-    for (const s of getrennte) entries.push({ type: 'solo', station: s })
-
-    if (gruppierte.length === 1) {
-      entries.push({ type: 'solo', station: gruppierte[0] })
-    } else if (gruppierte.length > 1) {
-      entries.push({ type: 'gruppe', key, karten: gruppierte })
-    }
+    if (karten.length === 1) entries.push({ type: 'solo', station: karten[0] })
+    else entries.push({ type: 'gruppe', key, karten })
   }
 
   // Sortier-Hilfswerte je Eintrag (Gruppen zählen mit ihrem stärksten/neuesten Wert)
@@ -1587,7 +1613,7 @@ function renderList() {
 
   let html = ''
   for (const e of entries) {
-    html += e.type === 'solo' ? cardHTML(e.station) : gruppenBlockHTML(e.key, e.karten)
+    html += e.type === 'solo' ? cardHTML(e.station) : gruppenBlockHTML(e.key, e.karten, e.manual)
   }
 
   document.getElementById('list').innerHTML = html
@@ -1612,6 +1638,11 @@ async function gruppeAufhebenByKey(key) {
   await loadStationen()
 }
 
+async function kartAusGruppeLoesen(id) {
+  await sbPatchStation(id, { gruppe_id: 'solo' })
+  await loadStationen()
+}
+
 async function gruppeAufheben(gruppeId, ids) {
   for (const id of ids) {
     await sbPatchStation(id, { gruppe_id: 'solo' })
@@ -1619,7 +1650,7 @@ async function gruppeAufheben(gruppeId, ids) {
   await loadStationen()
 }
 
-function cardHTML(s) {
+function cardHTML(s, inGruppe) {
   const id = s.id
   const isIrr = s.irrelevant
   const isErl = s.erledigt
@@ -1672,6 +1703,10 @@ function cardHTML(s) {
     ? `<span class="mitarbeiter-badge" onclick="event.stopPropagation();setMitarbeiter('${id}')" title="${s.mitarbeiter}">${s.mitarbeiter.substring(0,2).toUpperCase()}</span>`
     : `<span class="mitarbeiter-badge leer" onclick="event.stopPropagation();setMitarbeiter('${id}')" title="Mitarbeiter zuweisen">+</span>`
 
+  const loesenBtn = inGruppe
+    ? `<span onclick="event.stopPropagation();kartAusGruppeLoesen('${id}')" title="Aus Gruppe lösen" style="cursor:pointer;font-size:12px;color:var(--text3);line-height:1">↙</span>`
+    : ''
+
   return `<div class="card${farbklasse}${selectedCards.has('${id}')?' checked':''}" onclick="handleCardClick(event,'${id}')" id="card-${id}">
     <input type="checkbox" class="card-checkbox" id="chk-${id}" onclick="event.stopPropagation();toggleCard('${id}')" ${selectedCards.has('${id}')?'checked':''}>
     <div style="display:flex;align-items:center;gap:6px;justify-content:space-between">
@@ -1681,7 +1716,7 @@ function cardHTML(s) {
         ${tb}
       </div>
       <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
-        ${tags}${routerSym}
+        ${tags}${routerSym}${loesenBtn}
       </div>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:3px;gap:8px">
