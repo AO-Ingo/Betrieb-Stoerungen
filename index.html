@@ -1245,7 +1245,7 @@ async function ausgewaehltIrrelevant() {
   const grund = prompt('Grund für alle ausgewählten Stationen:', 'Keine Betreuung')
   if (grund === null) return
   for (const id of selectedCards) {
-    await sb(`stationen?id=eq.${id}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ irrelevant: true, irrelevant_grund: grund||null }) })
+    await sbPatchStation(id, { irrelevant: true, irrelevant_grund: grund||null })
   }
   selectedCards.clear()
   await loadStationen()
@@ -1912,7 +1912,7 @@ async function markiereErledigt(id) {
   const sonst = document.getElementById('dp-erl-sonstiges')
   const loesung = sel ? (sel.value === 'Sonstiges' && sonst ? sel.value + ': ' + sonst.value : sel.value) : (document.getElementById('erl-txt-'+id)||{}).value||''
   try {
-    await sb(`stationen?id=eq.${id}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({ erledigt: true, loesung: loesung||null, prioritaet_farbe: "gruen" }) })
+    await sbPatchStation(id, { erledigt: true, loesung: loesung||null, prioritaet_farbe: 'gruen' })
     loadStationen()
   } catch(e) { alert('Fehler: '+e.message) }
 }
@@ -1921,7 +1921,7 @@ async function markiereIrrelevant(id) {
   const grund = (document.getElementById('dp-irr-grund') || document.getElementById('irr-grund-'+id)||{value:''}).value
   const notiz = (document.getElementById('dp-irr-notiz') || document.getElementById('irr-notiz-'+id)||{value:''}).value
   try {
-    await sb(`stationen?id=eq.${id}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({ irrelevant: true, irrelevant_grund: notiz ? grund+': '+notiz : grund }) })
+    await sbPatchStation(id, { irrelevant: true, irrelevant_grund: notiz ? grund+': '+notiz : grund })
     await loadStationen()
     const fresh = stationen.find(x => x.id === id)
     if (fresh) openDetail(id)
@@ -1973,7 +1973,7 @@ async function save(id) {
   try {
     // Station-Felder speichern
     const val = (elId) => { const el = document.getElementById(elId); return el ? el.value||null : null }
-    await sb(`stationen?id=eq.${id}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({
+    await sbPatchStation(id, {
       kundenname: val('ef-kunde-'+id),
       standort: val('ef-standort-'+id),
       zoho_ticket_id: val('ef-tid-'+id),
@@ -1982,7 +1982,7 @@ async function save(id) {
       prioritaet_farbe: val('ef-farbe-'+id),
       notizen: val('ef-notes-'+id),
       mitarbeiter: val('ef-ma-'+id)
-    })})
+    })
 
     // Bestehende EVSE-IDs aktualisieren
     const evseInputs = document.querySelectorAll(`.evse-input-${id}:not(.evse-new)`)
@@ -2167,7 +2167,7 @@ async function markiereAusgewaehltErledigt() {
     const sel = document.querySelector(`.rueckwaerts-loesung[data-id="${id}"]`)
     const loesung = sel ? sel.value : ''
     try {
-      await sb(`stationen?id=eq.${id}`, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({ erledigt: true, loesung, prioritaet_farbe: "gruen" }) })
+      await sbPatchStation(id, { erledigt: true, loesung, prioritaet_farbe: 'gruen' })
     } catch(e) {}
   }
   closeImport()
