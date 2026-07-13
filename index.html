@@ -913,7 +913,7 @@ async function setRouterOnline(stationId, value) {
 async function bearbeiteLoesung(id) {
   const s = stationen.find(x => x.id === id)
   const aktuell = s ? s.loesung||'' : ''
-  const loesungsOptionen = ['Neustart stromlos','Neustart RMS','Router Neustart','Softwareupdate','Serviceeinsatz','Kein Eingriff','Sonstiges']
+  const loesungsOptionen = ['Neustart stromlos','Neustart RMS','Router Neustart','Softwareupdate','Serviceeinsatz','Sicherung umgelegt','Kein Eingriff','Sonstiges']
   const overlay = document.createElement('div')
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center'; overlay.className = 'app-overlay'
   const optionsHtml = loesungsOptionen.map(l=>`<option value="${l}" ${aktuell===l||aktuell.startsWith(l)?'selected':''}>${l}</option>`).join('')
