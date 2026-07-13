@@ -523,6 +523,14 @@ async function sb(path, opts = {}) {
   return t ? JSON.parse(t) : null
 }
 
+async function sbPatchStation(id, patch) {
+  return sb(`stationen?id=eq.${id}`, {
+    method: 'PATCH',
+    prefer: 'return=minimal',
+    body: JSON.stringify({ ...patch, aktualisiert_am: new Date().toISOString() })
+  })
+}
+
 let searchAllTimer = null
 function sucheAlleTabsDebounced() {
   clearTimeout(searchAllTimer)
