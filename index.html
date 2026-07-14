@@ -2175,14 +2175,27 @@ async function doImport() {
         }
         dup++
       } else {
-        // Neu anlegen – auch wenn erledigt existiert
-        const ns=await sb('stationen',{method:'POST',body:JSON.stringify({interne_id:s.interne_id,bezeichnung:s.bezeichnung,kundenname:s.kundenname,standort:s.standort||null,meldungstyp:s.meldungstyp})})
-        if (ns&&ns[0]) { const sid=ns[0].id; for (const p of s.ladepunkte) await sb('ladepunkte',{method:'POST',body:JSON.stringify({station_id:sid,evse_id:p.evse_id,prioritaet:p.prioritaet})}) }
-        neu++
+        // Prüfe ob erledigte/irrelevante Version existiert → reaktivieren
+        const exErl = await sb(`stationen?interne_id=eq.${encodeURIComponent(s.interne_id)}${bezFilter}&select=id,erledigt,irrelevant`)
+        if (exErl && exErl.length) {
+          // Reaktivieren: erledigt/irrelevant zurücksetzen
+          const e = exErl[0]
+          await sbPatchStation(e.id, { erledigt: false, irrelevant: false, irrelevant_grund: null, loesung: null, meldungstyp: s.meldungstyp, erledigt_am: null })
+          for (const p of s.ladepunkte) {
+            if (!p.evse_id) continue
+            const elp = await sb(`ladepunkte?station_id=eq.${e.id}&evse_id=eq.${encodeURIComponent(p.evse_id)}&select=id`)
+            if (!elp||!elp.length) { await sb('ladepunkte',{method:'POST',body:JSON.stringify({station_id:e.id,evse_id:p.evse_id,prioritaet:p.prioritaet})}) }
+          }
+          neu++
+        } else {
+          // Komplett neu anlegen
+          const ns=await sb('stationen',{method:'POST',body:JSON.stringify({interne_id:s.interne_id,bezeichnung:s.bezeichnung,kundenname:s.kundenname,standort:s.standort||null,meldungstyp:s.meldungstyp})})
+          if (ns&&ns[0]) { const sid=ns[0].id; for (const p of s.ladepunkte) await sb('ladepunkte',{method:'POST',body:JSON.stringify({station_id:sid,evse_id:p.evse_id,prioritaet:p.prioritaet})}) }
+          neu++
+        }
       }
     } catch(e) {
-      if (e.message && e.message.includes('23505')) { dup++ }
-      else { fehler.push(s.interne_id+': '+e.message) }
+      fehler.push(s.interne_id+': '+e.message)
     }
   }
   // Rückwärtsprüfung: aktive Stationen die nicht im Import sind
