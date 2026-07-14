@@ -1684,7 +1684,12 @@ function cardHTML(s, inGruppe) {
 
   // Neuester Kommentar oder Lösung (bei erledigten)
   const neusterK = (s.kommentare||[]).sort((a,b)=>new Date(b.erstellt_am)-new Date(a.erstellt_am))[0]
-  const kVorschau = s.erledigt && s.loesung ? s.loesung : (neusterK ? neusterK.text : '')
+  const erledigtAmStr = s.erledigt && s.aktualisiert_am
+    ? new Date(s.aktualisiert_am).toLocaleDateString('de-DE', {day:'2-digit', month:'2-digit', year:'numeric'})
+    : null
+  const kVorschau = s.erledigt && s.loesung
+    ? (erledigtAmStr ? `${s.loesung} · ${erledigtAmStr}` : s.loesung)
+    : (neusterK ? neusterK.text : '')
 
   // Gelb + 7 Tage vergangen = Erinnerung
   let gelbeErinnerung = ''
