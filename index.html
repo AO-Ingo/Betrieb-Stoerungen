@@ -2164,7 +2164,7 @@ async function doImport() {
     try {
       // Nur gegen aktive + irrelevante prüfen, NICHT gegen erledigte
       const bezFilter = s.bezeichnung ? `&bezeichnung=eq.${encodeURIComponent(s.bezeichnung)}` : '&bezeichnung=is.null'
-      const ex = await sb(`stationen?interne_id=eq.${encodeURIComponent(s.interne_id)}${bezFilter}&erledigt=eq.false&irrelevant=eq.false&select=id,meldungstyp`)
+      const ex = await sb(`stationen?interne_id=eq.${encodeURIComponent(s.interne_id)}${bezFilter}&erledigt=eq.false&select=id,meldungstyp`)
       if (ex&&ex.length) {
         const e=ex[0]
         if (e.meldungstyp==='stoerung'&&s.meldungstyp==='offline') await sbPatchStation(e.id, {meldungstyp:'offline'})
