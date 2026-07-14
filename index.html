@@ -2180,7 +2180,7 @@ async function doImport() {
         if (exErl && exErl.length) {
           // Reaktivieren: erledigt/irrelevant zurücksetzen
           const e = exErl[0]
-          await sbPatchStation(e.id, { erledigt: false, irrelevant: false, irrelevant_grund: null, loesung: null, meldungstyp: s.meldungstyp })
+          await sbPatchStation(e.id, { erledigt: false, irrelevant: false, irrelevant_grund: null, loesung: null, meldungstyp: s.meldungstyp, prioritaet_farbe: null })
           for (const p of s.ladepunkte) {
             if (!p.evse_id) continue
             const elp = await sb(`ladepunkte?station_id=eq.${e.id}&evse_id=eq.${encodeURIComponent(p.evse_id)}&select=id`)
