@@ -1271,7 +1271,7 @@ async function bestaetigeAusgewaehltErledigt() {
   if (!loesung) { alert('Bitte einen Lösungsgrund wählen.'); return }
   if (overlay) overlay.remove()
   for (const id of selectedCards) {
-    await sbPatchStation(id, { erledigt: true, loesung, prioritaet_farbe: 'gruen' })
+    await sbPatchStation(id, { erledigt: true, loesung, prioritaet_farbe: 'gruen', erledigt_am: new Date().toISOString() })
   }
   selectedCards.clear()
   await loadStationen()
@@ -1684,7 +1684,12 @@ function cardHTML(s, inGruppe) {
 
   // Neuester Kommentar oder Lösung (bei erledigten)
   const neusterK = (s.kommentare||[]).sort((a,b)=>new Date(b.erstellt_am)-new Date(a.erstellt_am))[0]
-  const kVorschau = s.erledigt && s.loesung ? s.loesung : (neusterK ? neusterK.text : '')
+  const erledigtAmStr = s.erledigt_am
+    ? new Date(s.erledigt_am).toLocaleDateString('de-DE', {day:'2-digit',month:'2-digit',year:'numeric'})
+    : (s.aktualisiert_am ? new Date(s.aktualisiert_am).toLocaleDateString('de-DE', {day:'2-digit',month:'2-digit',year:'numeric'}) : null)
+  const kVorschau = s.erledigt && s.loesung
+    ? (erledigtAmStr ? `${s.loesung} · ${erledigtAmStr}` : s.loesung)
+    : (neusterK ? neusterK.text : '')
 
   // Gelb + 7 Tage vergangen = Erinnerung
   let gelbeErinnerung = ''
@@ -1990,7 +1995,7 @@ async function markiereErledigt(id) {
   const sonst = document.getElementById('dp-erl-sonstiges')
   const loesung = sel ? (sel.value === 'Sonstiges' && sonst ? sel.value + ': ' + sonst.value : sel.value) : (document.getElementById('erl-txt-'+id)||{}).value||''
   try {
-    await sbPatchStation(id, { erledigt: true, loesung: loesung||null, prioritaet_farbe: 'gruen' })
+    await sbPatchStation(id, { erledigt: true, loesung: loesung||null, prioritaet_farbe: 'gruen', erledigt_am: new Date().toISOString() })
     loadStationen()
   } catch(e) { alert('Fehler: '+e.message) }
 }
@@ -2159,7 +2164,7 @@ async function doImport() {
     try {
       // Nur gegen aktive + irrelevante prüfen, NICHT gegen erledigte
       const bezFilter = s.bezeichnung ? `&bezeichnung=eq.${encodeURIComponent(s.bezeichnung)}` : '&bezeichnung=is.null'
-      const ex = await sb(`stationen?interne_id=eq.${encodeURIComponent(s.interne_id)}${bezFilter}&erledigt=eq.false&select=id,meldungstyp`)
+      const ex = await sb(`stationen?interne_id=eq.${encodeURIComponent(s.interne_id)}${bezFilter}&erledigt=eq.false&irrelevant=eq.false&select=id,meldungstyp`)
       if (ex&&ex.length) {
         const e=ex[0]
         if (e.meldungstyp==='stoerung'&&s.meldungstyp==='offline') await sbPatchStation(e.id, {meldungstyp:'offline'})
@@ -2245,7 +2250,7 @@ async function markiereAusgewaehltErledigt() {
     const sel = document.querySelector(`.rueckwaerts-loesung[data-id="${id}"]`)
     const loesung = sel ? sel.value : ''
     try {
-      await sbPatchStation(id, { erledigt: true, loesung, prioritaet_farbe: 'gruen' })
+      await sbPatchStation(id, { erledigt: true, loesung, prioritaet_farbe: 'gruen', erledigt_am: new Date().toISOString() })
     } catch(e) {}
   }
   closeImport()
