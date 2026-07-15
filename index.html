@@ -1325,6 +1325,10 @@ const MITARBEITER_LIST = [
   { name: 'Ferdinand Busalt', initialen: 'FB' },
 ]
 
+// Kleine Icons zur Kennzeichnung Router vs. SIM-Karte neben dem Online/Offline-Punkt
+const ICON_ROUTER = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" style="vertical-align:super"><rect x="3" y="11" width="18" height="8" rx="2" stroke="currentColor" stroke-width="2.2"/><path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="currentColor" stroke-width="2.2"/><circle cx="8" cy="15" r="1.2" fill="currentColor"/><circle cx="12.5" cy="15" r="1.2" fill="currentColor"/></svg>'
+const ICON_SIM = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" style="vertical-align:super"><path d="M6 3h9l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="2.2"/><rect x="8" y="9.5" width="6" height="5" rx="1" stroke="currentColor" stroke-width="1.6"/></svg>'
+
 const gruppenIdsMap = {}
 const gruppenKartenMap = {}
 
@@ -1526,8 +1530,8 @@ function gruppenBlockHTML(key, gruppierte, manual) {
   const grpBadgeClass = gruppierte.some(s=>s.meldungstyp==='offline') ? 'badge-offline' : 'badge-stoerung'
   const grpBadgeText = gruppierte.some(s=>s.meldungstyp==='offline') ? '⚡ Offline' : '⚠ Störung'
   // Router-Status
-  const grpRouter = gruppierte.some(s=>s.router_online===true) ? '<span style="font-size:12px">🟢<span style="font-size:8px;color:var(--text3);vertical-align:super">R</span></span>' : gruppierte.some(s=>s.router_online===false) ? '<span style="font-size:12px">🔴<span style="font-size:8px;color:var(--text3);vertical-align:super">R</span></span>' : ''
-  const grpSim = gruppierte.some(s=>s.sim_online===true) ? '<span style="font-size:12px">🟢<span style="font-size:8px;color:var(--text3);vertical-align:super">S</span></span>' : gruppierte.some(s=>s.sim_online===false) ? '<span style="font-size:12px">🔴<span style="font-size:8px;color:var(--text3);vertical-align:super">S</span></span>' : ''
+  const grpRouter = gruppierte.some(s=>s.router_online===true) ? `<span style="font-size:12px;color:#16a34a">🟢${ICON_ROUTER}</span>` : gruppierte.some(s=>s.router_online===false) ? `<span style="font-size:12px;color:#dc2626">🔴${ICON_ROUTER}</span>` : ''
+  const grpSim = gruppierte.some(s=>s.sim_online===true) ? `<span style="font-size:12px;color:#16a34a">🟢${ICON_SIM}</span>` : gruppierte.some(s=>s.sim_online===false) ? `<span style="font-size:12px;color:#dc2626">🔴${ICON_SIM}</span>` : ''
   // Neuester Kommentar aus allen Karten der Gruppe
   const grpKommentare = gruppierte.flatMap(s=>s.kommentare||[]).sort((a,b)=>new Date(b.erstellt_am)-new Date(a.erstellt_am))
   const grpNeusterK = grpKommentare[0]
@@ -1689,16 +1693,16 @@ function cardHTML(s, inGruppe) {
   const tags = (s.ladepunkte||[]).map(lp=>`<span class="evse-tag">${lp.evse_id||'–'}</span>`).join('')
   const faelligStr = s.faelligkeit ? new Date(s.faelligkeit+'T00:00:00').toLocaleDateString('de-DE') : null
 
-  // Router / SIM Symbol (mit kleinem Buchstaben, damit erkennbar ist was verbaut ist)
+  // Router / SIM Symbol (mit kleinem Icon, damit erkennbar ist was verbaut ist)
   const routerSym = s.router_online===true
-    ? '<span title="Router online" style="font-size:12px;line-height:1;white-space:nowrap">🟢<span style="font-size:8px;color:var(--text3);vertical-align:super">R</span></span>'
+    ? `<span title="Router online" style="font-size:12px;line-height:1;white-space:nowrap;color:#16a34a">🟢${ICON_ROUTER}</span>`
     : s.router_online===false
-    ? '<span title="Router offline" style="font-size:12px;line-height:1;white-space:nowrap">🔴<span style="font-size:8px;color:var(--text3);vertical-align:super">R</span></span>'
+    ? `<span title="Router offline" style="font-size:12px;line-height:1;white-space:nowrap;color:#dc2626">🔴${ICON_ROUTER}</span>`
     : ''
   const simSym = s.sim_online===true
-    ? '<span title="SIM-Karte online" style="font-size:12px;line-height:1;white-space:nowrap">🟢<span style="font-size:8px;color:var(--text3);vertical-align:super">S</span></span>'
+    ? `<span title="SIM-Karte online" style="font-size:12px;line-height:1;white-space:nowrap;color:#16a34a">🟢${ICON_SIM}</span>`
     : s.sim_online===false
-    ? '<span title="SIM-Karte offline" style="font-size:12px;line-height:1;white-space:nowrap">🔴<span style="font-size:8px;color:var(--text3);vertical-align:super">S</span></span>'
+    ? `<span title="SIM-Karte offline" style="font-size:12px;line-height:1;white-space:nowrap;color:#dc2626">🔴${ICON_SIM}</span>`
     : ''
 
   // Neuester Kommentar oder Lösung (bei erledigten)
