@@ -1827,7 +1827,10 @@ function openDetail(id) {
     ${isErl?`<div style="border-top:1px solid var(--border);padding-top:12px;margin-bottom:12px">
       <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px">Lösung</div>
       <div style="display:flex;gap:6px;align-items:flex-start">
-        <div class="info-box info-box-green" style="flex:1">${s.loesung||'–'}</div>
+        <div class="info-box info-box-green" style="flex:1">
+            <div>${s.loesung||'–'}</div>
+            ${s.aktualisiert_am ? '<div style="font-size:11px;color:var(--text3);margin-top:4px">Erledigt am: '+new Date(s.aktualisiert_am).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'})+'</div>' : ''}
+          </div>
         <button class="btn btn-secondary btn-sm" onclick="bearbeiteLoesung('${s.id}')">✏</button>
       </div>
     </div>`:''}
@@ -1995,7 +1998,10 @@ async function markiereErledigt(id) {
   const sonst = document.getElementById('dp-erl-sonstiges')
   const loesung = sel ? (sel.value === 'Sonstiges' && sonst ? sel.value + ': ' + sonst.value : sel.value) : (document.getElementById('erl-txt-'+id)||{}).value||''
   try {
-    await sbPatchStation(id, { erledigt: true, loesung: loesung||null, prioritaet_farbe: 'gruen' })
+    const alteLoesung = currentStation && currentStation.loesung && currentStation.loesung !== (loesung||null)
+      ? currentStation.loesung + ' → ' + (loesung||'')
+      : (loesung||null)
+    await sbPatchStation(id, { erledigt: true, loesung: alteLoesung, prioritaet_farbe: 'gruen' })
     loadStationen()
   } catch(e) { alert('Fehler: '+e.message) }
 }
