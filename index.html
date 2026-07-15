@@ -2171,7 +2171,7 @@ async function doImport() {
         dup++
       } else {
         // Neu anlegen – auch wenn erledigt existiert
-        const ns=await sb('stationen',{method:'POST',body:JSON.stringify({interne_id:s.interne_id,bezeichnung:s.bezeichnung,kundenname:s.kundenname,standort:s.standort||null,meldungstyp:s.meldungstyp})})
+        const ns=await sb('stationen',{method:'POST',body:JSON.stringify({interne_id:s.interne_id,bezeichnung:s.bezeichnung,kundenname:s.kundenname,standort:s.standort||null,meldungstyp:s.meldungstyp,prioritaet_farbe:null})})
         if (ns&&ns[0]) { const sid=ns[0].id; for (const p of s.ladepunkte) await sb('ladepunkte',{method:'POST',body:JSON.stringify({station_id:sid,evse_id:p.evse_id,prioritaet:p.prioritaet})}) }
         neu++
       }
