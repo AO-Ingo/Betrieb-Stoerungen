@@ -933,6 +933,14 @@ async function setRouterOnline(stationId, value) {
   } catch(e) { alert('Fehler: '+e.message) }
 }
 
+async function setSimOnline(stationId, value) {
+  try {
+    await sbPatchStation(stationId, { sim_online: value })
+    await loadStationen()
+    openDetail(stationId)
+  } catch(e) { alert('Fehler: '+e.message) }
+}
+
 async function bearbeiteLoesung(id) {
   const s = stationen.find(x => x.id === id)
   const aktuell = s ? s.loesung||'' : ''
@@ -1513,7 +1521,8 @@ function gruppenBlockHTML(key, gruppierte, manual) {
   const grpBadgeClass = gruppierte.some(s=>s.meldungstyp==='offline') ? 'badge-offline' : 'badge-stoerung'
   const grpBadgeText = gruppierte.some(s=>s.meldungstyp==='offline') ? '⚡ Offline' : '⚠ Störung'
   // Router-Status
-  const grpRouter = gruppierte.some(s=>s.router_online===true) ? '<span style="color:#16a34a;font-size:12px">🟢</span>' : gruppierte.some(s=>s.router_online===false) ? '<span style="color:#dc2626;font-size:12px">🔴</span>' : ''
+  const grpRouter = gruppierte.some(s=>s.router_online===true) ? '<span style="font-size:12px">🟢<span style="font-size:8px;color:var(--text3);vertical-align:super">R</span></span>' : gruppierte.some(s=>s.router_online===false) ? '<span style="font-size:12px">🔴<span style="font-size:8px;color:var(--text3);vertical-align:super">R</span></span>' : ''
+  const grpSim = gruppierte.some(s=>s.sim_online===true) ? '<span style="font-size:12px">🟢<span style="font-size:8px;color:var(--text3);vertical-align:super">S</span></span>' : gruppierte.some(s=>s.sim_online===false) ? '<span style="font-size:12px">🔴<span style="font-size:8px;color:var(--text3);vertical-align:super">S</span></span>' : ''
   // Neuester Kommentar aus allen Karten der Gruppe
   const grpKommentare = gruppierte.flatMap(s=>s.kommentare||[]).sort((a,b)=>new Date(b.erstellt_am)-new Date(a.erstellt_am))
   const grpNeusterK = grpKommentare[0]
@@ -1528,7 +1537,7 @@ function gruppenBlockHTML(key, gruppierte, manual) {
               <span class="badge" style="background:var(--bg3);color:var(--text2);font-size:10px">${gruppierte.length} Stationen</span>
             </div>
             <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
-              ${grpRouter}
+              ${grpRouter}${grpSim}
             </div>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-top:3px;gap:8px">
@@ -1675,16 +1684,22 @@ function cardHTML(s, inGruppe) {
   const tags = (s.ladepunkte||[]).map(lp=>`<span class="evse-tag">${lp.evse_id||'–'}</span>`).join('')
   const faelligStr = s.faelligkeit ? new Date(s.faelligkeit+'T00:00:00').toLocaleDateString('de-DE') : null
 
-  // Router Symbol
+  // Router / SIM Symbol (mit kleinem Buchstaben, damit erkennbar ist was verbaut ist)
   const routerSym = s.router_online===true
-    ? '<span title="Router online" style="color:#16a34a;font-size:12px;line-height:1">🟢</span>'
+    ? '<span title="Router online" style="font-size:12px;line-height:1;white-space:nowrap">🟢<span style="font-size:8px;color:var(--text3);vertical-align:super">R</span></span>'
     : s.router_online===false
-    ? '<span title="Router offline" style="color:#dc2626;font-size:12px;line-height:1">🔴</span>'
+    ? '<span title="Router offline" style="font-size:12px;line-height:1;white-space:nowrap">🔴<span style="font-size:8px;color:var(--text3);vertical-align:super">R</span></span>'
+    : ''
+  const simSym = s.sim_online===true
+    ? '<span title="SIM-Karte online" style="font-size:12px;line-height:1;white-space:nowrap">🟢<span style="font-size:8px;color:var(--text3);vertical-align:super">S</span></span>'
+    : s.sim_online===false
+    ? '<span title="SIM-Karte offline" style="font-size:12px;line-height:1;white-space:nowrap">🔴<span style="font-size:8px;color:var(--text3);vertical-align:super">S</span></span>'
     : ''
 
   // Neuester Kommentar oder Lösung (bei erledigten)
   const neusterK = (s.kommentare||[]).sort((a,b)=>new Date(b.erstellt_am)-new Date(a.erstellt_am))[0]
-  const kVorschau = s.erledigt && s.loesung ? s.loesung : (neusterK ? neusterK.text : '')
+  const erledigtDatum = s.aktualisiert_am ? new Date(s.aktualisiert_am).toLocaleDateString('de-DE') : ''
+  const kVorschau = s.erledigt && s.loesung ? s.loesung + (erledigtDatum ? ' · ' + erledigtDatum : '') : (neusterK ? neusterK.text : '')
 
   // Gelb + 7 Tage vergangen = Erinnerung
   let gelbeErinnerung = ''
@@ -1724,7 +1739,7 @@ function cardHTML(s, inGruppe) {
         ${tb}
       </div>
       <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
-        ${tags}${routerSym}${loesenBtn}
+        ${tags}${routerSym}${simSym}${loesenBtn}
       </div>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:3px;gap:8px">
@@ -1795,6 +1810,12 @@ function openDetail(id) {
         <button class="btn btn-sm ${s.router_online===false?'btn-red':'btn-secondary'}" onclick="setRouterOnline('${s.id}',false)">🔴 Offline</button>
         <button class="btn btn-sm btn-secondary" onclick="setRouterOnline('${s.id}',null)">– Unbekannt</button>
       </div>
+      <div class="detail-label">SIM-Karte online</div>
+      <div style="display:flex;gap:6px;margin-top:4px;margin-bottom:10px">
+        <button class="btn btn-sm ${s.sim_online===true?'btn-green':'btn-secondary'}" onclick="setSimOnline('${s.id}',true)">🟢 Online</button>
+        <button class="btn btn-sm ${s.sim_online===false?'btn-red':'btn-secondary'}" onclick="setSimOnline('${s.id}',false)">🔴 Offline</button>
+        <button class="btn btn-sm btn-secondary" onclick="setSimOnline('${s.id}',null)">– Unbekannt</button>
+      </div>
       <div class="detail-label">Betroffener Umfang</div>
       <select id="dp-umfang-${s.id}" onchange="setUmfang('${s.id}',this.value)" style="width:100%;padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif;background:var(--bg2);margin-top:4px">
         <option value="">– Nicht angegeben</option>
@@ -1825,6 +1846,7 @@ function openDetail(id) {
         <div class="info-box info-box-green" style="flex:1">${s.loesung||'–'}</div>
         <button class="btn btn-secondary btn-sm" onclick="bearbeiteLoesung('${s.id}')">✏</button>
       </div>
+      ${s.aktualisiert_am?`<div style="font-size:11px;color:var(--text3);margin-top:6px">Erledigt am: ${new Date(s.aktualisiert_am).toLocaleDateString('de-DE')}</div>`:''}
     </div>`:''}
     ${isIrr&&s.irrelevant_grund?`<div class="info-box info-box-gray" style="margin-bottom:12px">Grund: ${s.irrelevant_grund}</div>`:''}
 
