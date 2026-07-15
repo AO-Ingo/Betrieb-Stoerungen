@@ -196,7 +196,12 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg3); color: var(--
 }
 .edit-form input:focus, .edit-form textarea:focus, .edit-form select:focus { border-color: var(--orange); background: var(--bg); }
 .edit-form textarea { resize: none; height: 60px; }
-.edit-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.edit-actions {
+  display: flex; gap: 6px; flex-wrap: wrap;
+  position: sticky; bottom: -1px;
+  background: var(--bg); border-top: 1px solid var(--border);
+  padding: 10px 0 2px; margin-top: 4px; z-index: 5;
+}
 
 /* POPUP BOX */
 .popup-box { display: none; background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--radius); padding: 12px; margin-top: 8px; }
