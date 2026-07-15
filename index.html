@@ -1610,7 +1610,7 @@ function renderList() {
     : ([...new Set(e.karten.map(s => s.mitarbeiter).filter(Boolean))].sort()[0] || '\uffff')
 
   if (sortMode === 'farbe') {
-    entries.sort((a,b) => farbeVon(a) - farbeVon(b))
+    entries.sort((a,b) => farbeVon(a) - farbeVon(b) || datumVon(b, 'aktualisiert_am') - datumVon(a, 'aktualisiert_am'))
   } else if (sortMode === 'mitarbeiter') {
     entries.sort((a,b) => mitarbeiterVon(a).localeCompare(mitarbeiterVon(b), 'de'))
   } else if (sortMode === 'aktualisiert') {
@@ -1684,12 +1684,7 @@ function cardHTML(s, inGruppe) {
 
   // Neuester Kommentar oder Lösung (bei erledigten)
   const neusterK = (s.kommentare||[]).sort((a,b)=>new Date(b.erstellt_am)-new Date(a.erstellt_am))[0]
-  const erledigtAmStr = s.erledigt && s.aktualisiert_am
-    ? new Date(s.aktualisiert_am).toLocaleDateString('de-DE', {day:'2-digit', month:'2-digit', year:'numeric'})
-    : null
-  const kVorschau = s.erledigt && s.loesung
-    ? (erledigtAmStr ? `${s.loesung} · ${erledigtAmStr}` : s.loesung)
-    : (neusterK ? neusterK.text : '')
+  const kVorschau = s.erledigt && s.loesung ? s.loesung : (neusterK ? neusterK.text : '')
 
   // Gelb + 7 Tage vergangen = Erinnerung
   let gelbeErinnerung = ''
@@ -1827,10 +1822,7 @@ function openDetail(id) {
     ${isErl?`<div style="border-top:1px solid var(--border);padding-top:12px;margin-bottom:12px">
       <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px">Lösung</div>
       <div style="display:flex;gap:6px;align-items:flex-start">
-        <div class="info-box info-box-green" style="flex:1">
-            <div>${s.loesung||'–'}</div>
-            ${s.aktualisiert_am ? '<div style="font-size:11px;color:var(--text3);margin-top:4px">Erledigt am: '+new Date(s.aktualisiert_am).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'})+'</div>' : ''}
-          </div>
+        <div class="info-box info-box-green" style="flex:1">${s.loesung||'–'}</div>
         <button class="btn btn-secondary btn-sm" onclick="bearbeiteLoesung('${s.id}')">✏</button>
       </div>
     </div>`:''}
@@ -1998,10 +1990,7 @@ async function markiereErledigt(id) {
   const sonst = document.getElementById('dp-erl-sonstiges')
   const loesung = sel ? (sel.value === 'Sonstiges' && sonst ? sel.value + ': ' + sonst.value : sel.value) : (document.getElementById('erl-txt-'+id)||{}).value||''
   try {
-    const alteLoesung = currentStation && currentStation.loesung && currentStation.loesung !== (loesung||null)
-      ? currentStation.loesung + ' → ' + (loesung||'')
-      : (loesung||null)
-    await sbPatchStation(id, { erledigt: true, loesung: alteLoesung, prioritaet_farbe: 'gruen' })
+    await sbPatchStation(id, { erledigt: true, loesung: loesung||null, prioritaet_farbe: 'gruen' })
     loadStationen()
   } catch(e) { alert('Fehler: '+e.message) }
 }
@@ -2181,27 +2170,14 @@ async function doImport() {
         }
         dup++
       } else {
-        // Prüfe ob erledigte/irrelevante Version existiert → reaktivieren
-        const exErl = await sb(`stationen?interne_id=eq.${encodeURIComponent(s.interne_id)}${bezFilter}&select=id,erledigt,irrelevant`)
-        if (exErl && exErl.length) {
-          // Reaktivieren: erledigt/irrelevant zurücksetzen
-          const e = exErl[0]
-          await sbPatchStation(e.id, { erledigt: false, irrelevant: false, irrelevant_grund: null, loesung: null, meldungstyp: s.meldungstyp, prioritaet_farbe: null })
-          for (const p of s.ladepunkte) {
-            if (!p.evse_id) continue
-            const elp = await sb(`ladepunkte?station_id=eq.${e.id}&evse_id=eq.${encodeURIComponent(p.evse_id)}&select=id`)
-            if (!elp||!elp.length) { await sb('ladepunkte',{method:'POST',body:JSON.stringify({station_id:e.id,evse_id:p.evse_id,prioritaet:p.prioritaet})}) }
-          }
-          neu++
-        } else {
-          // Komplett neu anlegen
-          const ns=await sb('stationen',{method:'POST',body:JSON.stringify({interne_id:s.interne_id,bezeichnung:s.bezeichnung,kundenname:s.kundenname,standort:s.standort||null,meldungstyp:s.meldungstyp})})
-          if (ns&&ns[0]) { const sid=ns[0].id; for (const p of s.ladepunkte) await sb('ladepunkte',{method:'POST',body:JSON.stringify({station_id:sid,evse_id:p.evse_id,prioritaet:p.prioritaet})}) }
-          neu++
-        }
+        // Neu anlegen – auch wenn erledigt existiert
+        const ns=await sb('stationen',{method:'POST',body:JSON.stringify({interne_id:s.interne_id,bezeichnung:s.bezeichnung,kundenname:s.kundenname,standort:s.standort||null,meldungstyp:s.meldungstyp})})
+        if (ns&&ns[0]) { const sid=ns[0].id; for (const p of s.ladepunkte) await sb('ladepunkte',{method:'POST',body:JSON.stringify({station_id:sid,evse_id:p.evse_id,prioritaet:p.prioritaet})}) }
+        neu++
       }
     } catch(e) {
-      fehler.push(s.interne_id+': '+e.message)
+      if (e.message && e.message.includes('23505')) { dup++ }
+      else { fehler.push(s.interne_id+': '+e.message) }
     }
   }
   // Rückwärtsprüfung: aktive Stationen die nicht im Import sind
