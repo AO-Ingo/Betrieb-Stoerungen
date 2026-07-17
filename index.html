@@ -1513,12 +1513,11 @@ function setTab(t) {
   loadStationen()
 }
 
-function gruppenBlockHTML(key, gruppierte, manual) {
+function gruppenBlockHTML(key, gruppierte) {
   const dashboards = [...new Set(gruppierte.map(s => s.kundenname).filter(Boolean))]
-  const standort = manual ? '' : (gruppierte[0].standort || gruppierte[0].kundenname || '–')
-  const dashboard = manual
-    ? (dashboards.length ? dashboards.join(', ') : '–')
-    : (gruppierte[0].kundenname || '–')
+  const dashboard = dashboards.length === 1 ? dashboards[0] : (dashboards.join(', ') || '–')
+  const standorte = [...new Set(gruppierte.map(s => s.standort).filter(Boolean))]
+  const standort = standorte.length === 1 ? standorte[0] : ''
   const gruppeId = 'grp-' + key.replace(/[^a-zA-Z0-9]/g, '-')
   const farben = gruppierte.map(s => s.prioritaet_farbe).filter(Boolean)
 
