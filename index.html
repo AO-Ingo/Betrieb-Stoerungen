@@ -1252,6 +1252,7 @@ async function gruppiereAusgewaehlte() {
     await sbPatchStation(id, { gruppe_id: neueGruppeId })
   }
   selectedCards.clear()
+  updateAktionsleiste()
   await loadStationen()
 }
 
@@ -1300,6 +1301,7 @@ async function bestaetigeAusgewaehltErledigt() {
     await sbPatchStation(id, { erledigt: true, loesung, prioritaet_farbe: 'gruen' })
   }
   selectedCards.clear()
+  updateAktionsleiste()
   await loadStationen()
 }
 
@@ -1310,6 +1312,7 @@ async function ausgewaehltIrrelevant() {
     await sbPatchStation(id, { irrelevant: true, irrelevant_grund: grund||null })
   }
   selectedCards.clear()
+  updateAktionsleiste()
   await loadStationen()
 }
 
@@ -1319,6 +1322,7 @@ async function ausgewaehltFarbe(farbe) {
     await sbPatchStation(id, { prioritaet_farbe: farbe || null })
   }
   selectedCards.clear()
+  updateAktionsleiste()
   await loadStationen()
 }
 
@@ -1329,6 +1333,7 @@ async function ausgewaehltLoeschen() {
     await sb(`stationen?id=eq.${id}`, { method: 'DELETE', prefer: 'return=minimal' })
   }
   selectedCards.clear()
+  updateAktionsleiste()
   await loadStationen()
 }
 
