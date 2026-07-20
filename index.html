@@ -961,6 +961,7 @@ async function bearbeiteLoesung(id) {
   const s = stationen.find(x => x.id === id)
   const aktuell = s ? s.loesung||'' : ''
   const loesungsOptionen = ['Neustart stromlos','Neustart RMS','Router Neustart','Softwareupdate','Serviceeinsatz','Sicherung umgelegt','Kein Eingriff','Sonstiges']
+  document.querySelectorAll('.app-overlay').forEach(el=>el.remove())  // vorherige Overlays aufräumen (verhindert haengende Fenster bei Doppelklick)
   const overlay = document.createElement('div')
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center'; overlay.className = 'app-overlay'
   const optionsHtml = loesungsOptionen.map(l=>`<option value="${l}" ${aktuell===l||aktuell.startsWith(l)?'selected':''}>${l}</option>`).join('')
@@ -1266,6 +1267,7 @@ function alleAbwaehlen() {
 }
 
 async function ausgewaehltErledigt() {
+  document.querySelectorAll('.app-overlay').forEach(el=>el.remove())  // vorherige Overlays aufräumen (verhindert haengende Fenster bei Doppelklick)
   const overlay = document.createElement('div')
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center'; overlay.className = 'app-overlay'
   const optionsHtml = ['Neustart stromlos','Neustart RMS','Router Neustart','Softwareupdate','Serviceeinsatz','Sicherung umgelegt','Kein Eingriff','Sonstiges'].map(l=>`<option value="${l}">${l}</option>`).join('')
@@ -1343,6 +1345,19 @@ const ICON_SIM = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" st
 const gruppenIdsMap = {}
 const gruppenKartenMap = {}
 
+function toggleGruppeAuswahl(grpKey) {
+  const ids = gruppenIdsMap[grpKey] || []
+  if (!ids.length) return
+  const alleAusgewaehlt = ids.every(id => selectedCards.has(id))
+  if (alleAusgewaehlt) {
+    ids.forEach(id => selectedCards.delete(id))
+  } else {
+    ids.forEach(id => selectedCards.add(id))
+  }
+  renderList()
+  updateAktionsleiste()
+}
+
 async function bearbeiteGruppe(gruppeId) {
   const key1 = gruppeId.replace('grp-','grp_').replace(/-/g,'_')
   const key2 = gruppeId
@@ -1364,6 +1379,7 @@ async function bearbeiteGruppeById(ids) {
   const aktuellFarbe = erste?.prioritaet_farbe || ''
   const aktuellMa = erste?.mitarbeiter || ''
 
+  document.querySelectorAll('.app-overlay').forEach(el=>el.remove())  // vorherige Overlays aufräumen (verhindert haengende Fenster bei Doppelklick)
   const overlay = document.createElement('div')
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center'; overlay.className = 'app-overlay'
   overlay.innerHTML = `<div style="background:#fff;border-radius:10px;padding:20px;min-width:320px;box-shadow:0 8px 30px rgba(0,0,0,0.2)">
@@ -1429,6 +1445,7 @@ function setGruppeMitarbeiterByKey(key) {
 }
 
 async function setGruppeMitarbeiter(ids) {
+  document.querySelectorAll('.app-overlay').forEach(el=>el.remove())  // vorherige Overlays aufräumen (verhindert haengende Fenster bei Doppelklick)
   const overlay = document.createElement('div')
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center'; overlay.className = 'app-overlay'
   overlay.innerHTML = `<div style="background:#fff;border-radius:10px;padding:20px;min-width:220px;box-shadow:0 8px 30px rgba(0,0,0,0.2)">
@@ -1462,6 +1479,7 @@ async function setMitarbeiter(id) {
   const aktuell = s ? s.mitarbeiter || '' : ''
 
   // Popup mit Auswahl
+  document.querySelectorAll('.app-overlay').forEach(el=>el.remove())  // vorherige Overlays aufräumen (verhindert haengende Fenster bei Doppelklick)
   const overlay = document.createElement('div')
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center'; overlay.className = 'app-overlay'
   overlay.innerHTML = `<div style="background:#fff;border-radius:10px;padding:20px;min-width:220px;box-shadow:0 8px 30px rgba(0,0,0,0.2)">
@@ -1556,7 +1574,8 @@ function gruppenBlockHTML(key, gruppierte) {
   const grpKVorschau = grpNeusterK ? `<span style="font-size:11px;color:var(--text2);background:var(--bg2);border-left:2px solid var(--orange);padding:1px 6px;border-radius:0 3px 3px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:250px">💬 ${grpNeusterK.text}</span>` : ''
 
   return `<div class="gruppe">
-        <div class="card${grpFarbe}" onclick="toggleGruppe('${gruppeId}')" style="cursor:pointer;margin-bottom:4px;padding-bottom:6px">
+        <div class="card${grpFarbe}${gruppierte.every(s=>selectedCards.has(s.id))?' checked':''}" onclick="toggleGruppe('${gruppeId}')" style="cursor:pointer;margin-bottom:4px;padding-bottom:6px">
+          <input type="checkbox" class="card-checkbox" title="Alle Stationen dieser Gruppe auswählen" onclick="event.stopPropagation();toggleGruppeAuswahl('${grpKey}')" ${gruppierte.every(s=>selectedCards.has(s.id))?'checked':''}>
           <div style="display:flex;align-items:center;gap:6px;justify-content:space-between">
             <div style="display:flex;align-items:center;gap:6px;min-width:0;flex:1;overflow:hidden">
               <span class="badge ${grpBadgeClass}" style="flex-shrink:0">${grpBadgeText}</span>
