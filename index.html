@@ -1368,6 +1368,12 @@ async function bearbeiteGruppeById(ids) {
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center'; overlay.className = 'app-overlay'
   overlay.innerHTML = `<div style="background:#fff;border-radius:10px;padding:20px;min-width:320px;box-shadow:0 8px 30px rgba(0,0,0,0.2)">
     <div style="font-size:14px;font-weight:600;margin-bottom:14px">Gruppe bearbeiten (${ids.length} Stationen)</div>
+    <div style="font-size:11px;color:#999;margin-bottom:4px">Meldungstyp (für alle Stationen)</div>
+    <select id="grp-meldungstyp" style="width:100%;padding:7px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;margin-bottom:10px">
+      <option value="">– Unverändert</option>
+      <option value="stoerung">⚠ Störung</option>
+      <option value="offline">⚡ Offline</option>
+    </select>
     <div style="font-size:11px;color:#999;margin-bottom:4px">Farbcode</div>
     <select id="grp-farbe" style="width:100%;padding:7px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;margin-bottom:10px">
       <option value="">Kein Farbcode</option>
@@ -1400,6 +1406,7 @@ async function speichereGruppe() {
   const farbe = overlay?.querySelector('#grp-farbe')?.value ?? null
   const ma = overlay?.querySelector('#grp-ma')?.value ?? null
   const notizen = overlay?.querySelector('#grp-notizen')?.value || null
+  const meldungstyp = overlay?.querySelector('#grp-meldungstyp')?.value || null
   if (overlay) overlay.remove()
   window._gruppeIds = null
   for (const id of ids) {
@@ -1407,6 +1414,7 @@ async function speichereGruppe() {
     if (farbe !== null) patch.prioritaet_farbe = farbe || null
     if (ma !== null) patch.mitarbeiter = ma || null
     if (notizen) patch.notizen = notizen
+    if (meldungstyp) { patch.meldungstyp = meldungstyp; patch.prioritaet_farbe = null }
     if (Object.keys(patch).length) {
       await sbPatchStation(id, patch)
     }
