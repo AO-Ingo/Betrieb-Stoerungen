@@ -695,31 +695,36 @@ async function ladeStatistik() {
     }
 
     const kwSorted = Object.values(kwMap).sort((a,b) => a.sort - b.sort).slice(-16)
-    const maxKW = Math.max(...kwSorted.map(k => k.offline + k.stoerung), 1)
-    const kwBarH = 120
 
-    const zeitverlaufHtml = kwSorted.length ? `
-      <div style="display:flex;align-items:flex-end;gap:6px;height:${kwBarH+30}px;padding-bottom:24px;overflow-x:auto">
-        ${kwSorted.map(k => {
-          const offH = Math.round(k.offline / maxKW * kwBarH)
-          const stH = Math.round(k.stoerung / maxKW * kwBarH)
-          return `<div style="display:flex;flex-direction:column;align-items:center;flex:1;min-width:40px">
-            <div style="display:flex;align-items:flex-end;gap:2px;height:${kwBarH}px">
-              <div style="display:flex;flex-direction:column;align-items:center">
-                ${k.offline ? `<span style="font-size:8px;color:#6b7280;margin-bottom:2px">${k.offline}</span><div style="width:14px;height:${offH}px;background:#9ca3af;border-radius:3px 3px 0 0" title="Offline: ${k.offline} LP"></div>` : '<div style="width:14px"></div>'}
-              </div>
-              <div style="display:flex;flex-direction:column;align-items:center">
-                ${k.stoerung ? `<span style="font-size:8px;color:#d97706;margin-bottom:2px">${k.stoerung}</span><div style="width:14px;height:${stH}px;background:#f59e0b;border-radius:3px 3px 0 0" title="Störung: ${k.stoerung} LP"></div>` : '<div style="width:14px"></div>'}
-              </div>
-            </div>
-            <div style="font-size:9px;color:var(--text3);margin-top:4px;text-align:center;white-space:nowrap">${k.kw}</div>
-          </div>`
-        }).join('')}
+    const zeitverlaufHtml = kwSorted.length ? (() => {
+      const w = Math.max(kwSorted.length * 90, 320)
+      const h = 170
+      const padL = 24, padR = 24, padT = 24, padB = 28
+      const plotW = w - padL - padR
+      const plotH = h - padT - padB
+      const maxVal = Math.max(...kwSorted.map(k => Math.max(k.offline, k.stoerung)), 1)
+      const stepX = kwSorted.length > 1 ? plotW / (kwSorted.length - 1) : 0
+      const xOf = i => padL + (kwSorted.length > 1 ? i * stepX : plotW / 2)
+      const yOf = v => padT + plotH - (v / maxVal * plotH)
+      const offlinePts = kwSorted.map((k,i) => `${xOf(i).toFixed(1)},${yOf(k.offline).toFixed(1)}`).join(' ')
+      const stoerungPts = kwSorted.map((k,i) => `${xOf(i).toFixed(1)},${yOf(k.stoerung).toFixed(1)}`).join(' ')
+      const offlineDots = kwSorted.map((k,i) => `<circle cx="${xOf(i).toFixed(1)}" cy="${yOf(k.offline).toFixed(1)}" r="3.5" fill="#9ca3af"/>${k.offline?`<text x="${xOf(i).toFixed(1)}" y="${(yOf(k.offline)-8).toFixed(1)}" font-size="10" fill="#6b7280" text-anchor="middle">${k.offline}</text>`:''}`).join('')
+      const stoerungDots = kwSorted.map((k,i) => `<circle cx="${xOf(i).toFixed(1)}" cy="${yOf(k.stoerung).toFixed(1)}" r="3.5" fill="#f59e0b"/>${k.stoerung?`<text x="${xOf(i).toFixed(1)}" y="${(yOf(k.stoerung)+15).toFixed(1)}" font-size="10" fill="#d97706" text-anchor="middle">${k.stoerung}</text>`:''}`).join('')
+      const labels = kwSorted.map((k,i) => `<text x="${xOf(i).toFixed(1)}" y="${h-8}" font-size="9" fill="#9ca3af" text-anchor="middle">${k.kw}</text>`).join('')
+      return `<div style="overflow-x:auto">
+        <svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block">
+          <polyline points="${offlinePts}" fill="none" stroke="#9ca3af" stroke-width="2"/>
+          <polyline points="${stoerungPts}" fill="none" stroke="#f59e0b" stroke-width="2"/>
+          ${offlineDots}
+          ${stoerungDots}
+          ${labels}
+        </svg>
       </div>
-      <div style="display:flex;gap:12px;font-size:12px;color:var(--text2)">
-        <span><span style="display:inline-block;width:12px;height:12px;background:#9ca3af;border-radius:2px;margin-right:4px;vertical-align:middle"></span>Offline</span>
-        <span><span style="display:inline-block;width:12px;height:12px;background:#f59e0b;border-radius:2px;margin-right:4px;vertical-align:middle"></span>Störung</span>
-      </div>` : '<div style="color:var(--text3);font-size:13px">Noch keine Daten</div>'
+      <div style="display:flex;gap:12px;font-size:12px;color:var(--text2);margin-top:8px">
+        <span><span style="display:inline-block;width:12px;height:2px;background:#9ca3af;margin-right:4px;vertical-align:middle"></span>Offline</span>
+        <span><span style="display:inline-block;width:12px;height:2px;background:#f59e0b;margin-right:4px;vertical-align:middle"></span>Störung</span>
+      </div>`
+    })() : '<div style="color:var(--text3);font-size:13px">Noch keine Daten</div>'
 
     const barHtml = (val, max, color) => `<div style="height:8px;background:var(--bg3);border-radius:4px;overflow:hidden;margin-top:4px"><div style="height:100%;width:${Math.round(val/max*100)}%;background:${color};border-radius:4px"></div></div>`
     const maxL = loesungSorted[0]?.[1] || 1
