@@ -1582,6 +1582,13 @@ function gruppenBlockHTML(key, gruppierte) {
   const grpKommentare = gruppierte.flatMap(s=>s.kommentare||[]).sort((a,b)=>new Date(b.erstellt_am)-new Date(a.erstellt_am))
   const grpNeusterK = grpKommentare[0]
   const grpKVorschau = grpNeusterK ? `<span style="font-size:11px;color:var(--text2);background:var(--bg2);border-left:2px solid var(--orange);padding:1px 6px;border-radius:0 3px 3px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:250px">💬 ${grpNeusterK.text}</span>` : ''
+  // Erste vorhandene Ticketnummer aus den zugeordneten Karten
+  const grpTicketStation = gruppierte.find(s => s.zoho_ticket_id)
+  const grpTb = grpTicketStation
+    ? grpTicketStation.zoho_ticket_url
+      ? `<a href="${grpTicketStation.zoho_ticket_url}" target="_blank" onclick="event.stopPropagation()" class="badge badge-ticket" style="text-decoration:none;flex-shrink:0">🎫 #${grpTicketStation.zoho_ticket_id}</a>`
+      : `<span class="badge badge-ticket" style="flex-shrink:0">🎫 #${grpTicketStation.zoho_ticket_id}</span>`
+    : ''
 
   return `<div class="gruppe">
         <div class="card${grpFarbe}${gruppierte.every(s=>selectedCards.has(s.id))?' checked':''}" onclick="toggleGruppe('${gruppeId}')" style="cursor:pointer;margin-bottom:4px;padding-bottom:6px">
@@ -1591,6 +1598,7 @@ function gruppenBlockHTML(key, gruppierte) {
               <span class="badge ${grpBadgeClass}" style="flex-shrink:0">${grpBadgeText}</span>
               <span style="font-weight:500;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${dashboard}</span>
               <span class="badge" style="background:var(--bg3);color:var(--text2);font-size:10px">${gruppierte.length} Stationen</span>
+              ${grpTb}
             </div>
             <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
               ${grpRouter}${grpSim}
