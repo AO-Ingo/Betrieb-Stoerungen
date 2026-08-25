@@ -2312,7 +2312,7 @@ let rueckwaertsIndex = 0
 let rueckwaertsErgebnis = {}
 
 function starteRueckwaertsPruefung(liste) {
-  rueckwaertsQueue = liste || []
+  rueckwaertsQueue = (liste || []).slice().sort((a,b) => (a.meldungstyp==='offline'?1:0) - (b.meldungstyp==='offline'?1:0))
   rueckwaertsIndex = 0
   rueckwaertsErgebnis = {}
   renderRueckwaertsSchritt()
