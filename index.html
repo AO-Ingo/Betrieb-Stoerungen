@@ -2285,7 +2285,7 @@ async function doImport() {
   // Rückwärtsprüfung: aktive Stationen die nicht im Import sind
   let nichtMehrImport = []
   try {
-    const aktive = await sb('stationen?erledigt=eq.false&irrelevant=eq.false&select=id,interne_id,bezeichnung,kundenname,meldungstyp') || []
+    const aktive = await sb('stationen?erledigt=eq.false&irrelevant=eq.false&select=id,interne_id,bezeichnung,kundenname,meldungstyp,standort,router_online,sim_online,zoho_ticket_id,zoho_ticket_url,aktualisiert_am,kommentare(*)') || []
     const importKeys = new Set(parsed.map(s => s.interne_id + '|||' + (s.bezeichnung||'__NULL__')))
     nichtMehrImport = aktive.filter(s => !importKeys.has(s.interne_id + '|||' + (s.bezeichnung||'__NULL__')))
   } catch(e) {}
@@ -2299,59 +2299,108 @@ async function doImport() {
   ${nichtMehrImport.length ? `
     <div style="margin-top:16px;border:1px solid #fbbf24;border-radius:8px;padding:12px;background:#fffbeb">
       <div style="font-weight:600;font-size:14px;margin-bottom:8px">⚠ ${nichtMehrImport.length} Station(en) nicht mehr im Export</div>
-      <div style="font-size:12px;color:#666;margin-bottom:10px">Diese Stationen stehen noch als aktiv in der Liste, tauchen aber im aktuellen Export nicht mehr auf. Möglicherweise wieder online?</div>
-      <div style="max-height:200px;overflow-y:auto;margin-bottom:10px">
-        ${nichtMehrImport.map(s=>`<div style="padding:8px 0;border-bottom:1px solid #fef3c7">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-            <input type="checkbox" class="rueckwaerts-check" data-id="${s.id}" checked style="width:16px;height:16px;flex-shrink:0">
-            <span style="font-size:13px;flex:1">${s.kundenname||s.bezeichnung||s.interne_id}</span>
-            <span style="font-size:11px;font-family:monospace;color:#999">${s.interne_id}</span>
-            <span class="badge ${s.meldungstyp==='offline'?'badge-offline':'badge-stoerung'}" style="font-size:10px">${s.meldungstyp==='offline'?'Offline':'Störung'}</span>
-          </div>
-          <select class="rueckwaerts-loesung" data-id="${s.id}" style="width:100%;padding:5px 8px;border:1px solid #fcd34d;border-radius:6px;font-size:12px;font-family:'DM Sans',sans-serif;background:#fffbeb">
-            <option value="">– Lösung wählen –</option>
-            <option value="Neustart stromlos">Neustart stromlos</option>
-            <option value="Neustart RMS">Neustart RMS</option>
-            <option value="Router Neustart">Router Neustart</option>
-            <option value="Softwareupdate">Softwareupdate</option>
-            <option value="Serviceeinsatz">Serviceeinsatz</option>
-            <option value="Sicherung umgelegt">Sicherung umgelegt</option>
-            <option value="Kein Eingriff">Kein Eingriff</option>
-            <option value="Sonstiges">Sonstiges</option>
-          </select>
-        </div>`).join('')}
-      </div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px"><button class="btn btn-green btn-sm" onclick="markiereAusgewaehltErledigt()">✓ Ausgewählte als erledigt markieren</button><button class="btn btn-secondary btn-sm" onclick="document.querySelectorAll('.rueckwaerts-check').forEach(cb=>cb.checked=false)">Alles abwählen</button><button class="btn btn-secondary btn-sm" onclick="document.querySelectorAll('.rueckwaerts-check').forEach(cb=>cb.checked=true)">Alles auswählen</button></div>
-      </div>
+      <div style="font-size:12px;color:#666;margin-bottom:10px">Diese Stationen stehen noch als aktiv in der Liste, tauchen aber im aktuellen Export nicht mehr auf. Möglicherweise wieder online? Du kannst sie jetzt einzeln durchgehen.</div>
+      <button class="btn btn-primary btn-sm" onclick="starteRueckwaertsPruefung(window.__nichtMehrImport)">▶ Durchgehen starten</button>
     </div>` : '<div style="margin-top:12px;color:#16a34a;font-size:13px">✓ Alle aktiven Stationen sind noch im Export</div>'}
   `
+  window.__nichtMehrImport = nichtMehrImport
   document.getElementById('mfoot').innerHTML=`<button class="btn btn-primary" onclick="closeImport();loadStationen()">Fertig</button>`
 }
 
-async function markiereAusgewaehltErledigt() {
-  const checkboxen = document.querySelectorAll('.rueckwaerts-check:checked')
-  if (!checkboxen.length) { alert('Keine Stationen ausgewählt.'); return }
+let rueckwaertsQueue = []
+let rueckwaertsIndex = 0
+let rueckwaertsErgebnis = {}
 
-  // Prüfe ob alle ein Dropdown ausgefüllt haben
-  let alleFilled = true
-  for (const cb of checkboxen) {
-    const id = cb.dataset.id
-    const sel = document.querySelector(`.rueckwaerts-loesung[data-id="${id}"]`)
-    if (!sel || !sel.value) { alleFilled = false; break }
-  }
-  if (!alleFilled) { alert('Bitte für jede Station einen Lösungsgrund auswählen.'); return }
+function starteRueckwaertsPruefung(liste) {
+  rueckwaertsQueue = liste || []
+  rueckwaertsIndex = 0
+  rueckwaertsErgebnis = {}
+  renderRueckwaertsSchritt()
+}
 
-  for (const cb of checkboxen) {
-    const id = cb.dataset.id
-    const sel = document.querySelector(`.rueckwaerts-loesung[data-id="${id}"]`)
-    const loesung = sel ? sel.value : ''
-    try {
-      await sbPatchStation(id, { erledigt: true, loesung, prioritaet_farbe: 'gruen' })
-    } catch(e) {}
+function renderRueckwaertsSchritt() {
+  const gesamt = rueckwaertsQueue.length
+  if (rueckwaertsIndex >= gesamt) { renderRueckwaertsZusammenfassung(); return }
+  const s = rueckwaertsQueue[rueckwaertsIndex]
+  const kommentare = (s.kommentare||[]).slice().sort((a,b)=>new Date(b.erstellt_am)-new Date(a.erstellt_am)).slice(0,3)
+  const kommentareHtml = kommentare.length
+    ? kommentare.map(k=>`<div style="font-size:12px;color:#555;padding:4px 0;border-bottom:1px dashed #eee">💬 ${k.text} <span style="color:#aaa;font-size:10px">(${k.erstellt_am ? new Date(k.erstellt_am).toLocaleDateString('de-DE') : ''})</span></div>`).join('')
+    : `<div style="font-size:12px;color:#999">Keine Kommentare vorhanden</div>`
+  const routerHtml = s.router_online===true ? '🟢 Online' : s.router_online===false ? '🔴 Offline' : '– unbekannt'
+  const simHtml = s.sim_online===true ? '🟢 Online' : s.sim_online===false ? '🔴 Offline' : '– unbekannt'
+  const ticketHtml = s.zoho_ticket_id
+    ? (s.zoho_ticket_url ? `<a href="${s.zoho_ticket_url}" target="_blank">🎫 #${s.zoho_ticket_id}</a>` : `🎫 #${s.zoho_ticket_id}`)
+    : '– kein Ticket'
+  const aktStr = s.aktualisiert_am ? new Date(s.aktualisiert_am).toLocaleDateString('de-DE') : '–'
+
+  document.getElementById('mbody').innerHTML = `
+    <div style="margin-bottom:10px;font-size:12px;color:#888">Station ${rueckwaertsIndex+1} von ${gesamt}</div>
+    <div style="border:1px solid #fbbf24;border-radius:8px;padding:14px;background:#fffbeb">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span class="badge ${s.meldungstyp==='offline'?'badge-offline':'badge-stoerung'}">${s.meldungstyp==='offline'?'⚡ Offline':'⚠ Störung'}</span>
+        <span style="font-weight:600;font-size:14px">${s.kundenname||s.bezeichnung||s.interne_id}</span>
+      </div>
+      <div style="font-size:12px;color:#666;margin-bottom:4px">📍 ${s.standort||'–'} &nbsp;·&nbsp; ID: ${s.interne_id}</div>
+      <div style="font-size:12px;color:#666;margin-bottom:10px">Router: ${routerHtml} &nbsp;·&nbsp; SIM: ${simHtml} &nbsp;·&nbsp; ${ticketHtml} &nbsp;·&nbsp; Zuletzt aktualisiert: ${aktStr}</div>
+      <div style="margin-bottom:12px">${kommentareHtml}</div>
+      <select id="rueckwaerts-loesung-aktuell" style="width:100%;padding:6px 10px;border:1px solid #fcd34d;border-radius:6px;font-size:12px;font-family:'DM Sans',sans-serif;background:#fff">
+        <option value="">– Lösung wählen (nur für "Erledigt") –</option>
+        <option value="Neustart stromlos">Neustart stromlos</option>
+        <option value="Neustart RMS">Neustart RMS</option>
+        <option value="Router Neustart">Router Neustart</option>
+        <option value="Softwareupdate">Softwareupdate</option>
+        <option value="Serviceeinsatz">Serviceeinsatz</option>
+        <option value="Sicherung umgelegt">Sicherung umgelegt</option>
+        <option value="Kein Eingriff">Kein Eingriff</option>
+        <option value="Sonstiges">Sonstiges</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+      <button class="btn btn-secondary btn-sm" onclick="rueckwaertsZurueck()" ${rueckwaertsIndex===0?'disabled':''}>← Zurück</button>
+      <button class="btn btn-secondary btn-sm" onclick="rueckwaertsUeberspringen()">Überspringen →</button>
+      <button class="btn btn-green btn-sm" onclick="rueckwaertsErledigt()">✓ Erledigt markieren</button>
+    </div>
+  `
+  document.getElementById('mfoot').innerHTML = `<button class="btn btn-secondary" onclick="closeImport();loadStationen()">Abbrechen &amp; schließen</button>`
+}
+
+function rueckwaertsZurueck() {
+  if (rueckwaertsIndex > 0) { rueckwaertsIndex--; renderRueckwaertsSchritt() }
+}
+
+function rueckwaertsUeberspringen() {
+  const s = rueckwaertsQueue[rueckwaertsIndex]
+  rueckwaertsErgebnis[s.id] = { aktion: 'uebersprungen' }
+  rueckwaertsIndex++
+  renderRueckwaertsSchritt()
+}
+
+async function rueckwaertsErledigt() {
+  const s = rueckwaertsQueue[rueckwaertsIndex]
+  const sel = document.getElementById('rueckwaerts-loesung-aktuell')
+  const loesung = sel ? sel.value : ''
+  if (!loesung) { alert('Bitte einen Lösungsgrund wählen.'); return }
+  try {
+    await sbPatchStation(s.id, { erledigt: true, loesung, prioritaet_farbe: 'gruen' })
+    rueckwaertsErgebnis[s.id] = { aktion: 'erledigt', loesung }
+  } catch(e) {
+    alert('Fehler beim Speichern: ' + e.message)
+    return
   }
-  closeImport()
-  loadStationen()
+  rueckwaertsIndex++
+  renderRueckwaertsSchritt()
+}
+
+function renderRueckwaertsZusammenfassung() {
+  const erledigtCount = Object.values(rueckwaertsErgebnis).filter(r=>r.aktion==='erledigt').length
+  const uebersprCount = Object.values(rueckwaertsErgebnis).filter(r=>r.aktion==='uebersprungen').length
+  document.getElementById('mbody').innerHTML = `
+    <div style="text-align:center;padding:20px 0">
+      <div style="font-size:15px;font-weight:600;margin-bottom:8px">✓ Durcharbeitung abgeschlossen</div>
+      <div style="font-size:13px;color:#666">${erledigtCount} als erledigt markiert, ${uebersprCount} übersprungen (bleiben aktiv)</div>
+    </div>
+  `
+  document.getElementById('mfoot').innerHTML = `<button class="btn btn-primary" onclick="closeImport();loadStationen()">Fertig</button>`
 }
 
 async function handleDeepLink() {
