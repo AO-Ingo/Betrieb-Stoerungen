@@ -2208,7 +2208,7 @@ function parse(raw) {
       let mel='', prio=null, j=i+1
       while (j<lines.length&&j<i+6) {
         const nl=lines[j].trim()
-        if (nl==='Offline'){mel='offline';j++;continue}
+        if (nl==='Offline'||nl==='Nicht verfügbar'||nl==='Nicht verfuegbar'){mel='offline';j++;continue}
         if (nl==='Störung'||nl==='Stoerung'){mel='stoerung';j++;continue}
         if (PRIO.includes(nl)){prio=nl;j++;continue}
         if (nl===''){j++;continue}
