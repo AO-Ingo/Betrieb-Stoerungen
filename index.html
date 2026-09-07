@@ -765,6 +765,7 @@ async function ladeStatistik() {
               'Softwareupdate': '#dc2626',
               'Serviceeinsatz': '#ec4899',
               'Sicherung umgelegt': '#eab308',
+              'Planmäßig': '#22c55e',
               'Kein Eingriff': '#14b8a6',
               'Sonstiges': '#64748b',
               'Keine Angabe': '#a3a3a3'
@@ -966,7 +967,7 @@ async function setSimOnline(stationId, value) {
 async function bearbeiteLoesung(id) {
   const s = stationen.find(x => x.id === id)
   const aktuell = s ? s.loesung||'' : ''
-  const loesungsOptionen = ['Neustart stromlos','Neustart RMS','Router Neustart','Softwareupdate','Serviceeinsatz','Sicherung umgelegt','Kein Eingriff','Sonstiges']
+  const loesungsOptionen = ['Neustart stromlos','Neustart RMS','Router Neustart','Softwareupdate','Serviceeinsatz','Sicherung umgelegt','Planmäßig','Kein Eingriff','Sonstiges']
   document.querySelectorAll('.app-overlay').forEach(el=>el.remove())  // vorherige Overlays aufräumen (verhindert haengende Fenster bei Doppelklick)
   const overlay = document.createElement('div')
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center'; overlay.className = 'app-overlay'
@@ -1026,7 +1027,7 @@ async function erstelleTicket(stationId, typ) {
     router: `<p>Guten Tag,</p><p>die Ladestation(en) und der Router am Standort ${standortName} sind aktuell offline.<br>Könnten Sie einmal einen Neustart des Routers veranlassen?</p><p>Den Neustart können Sie direkt mit der Reset-Taste am Gerät durchführen (Abb. ähnlich).<br>Wenn Sie diese ca. 4-5 Sekunden drücken blinken alle 5 LED's, die die Signalstärke anzeigen und der Reset wird durchgeführt.<br>Zu beachten ist nur, dass Sie die Taste nicht länger als 10 Sekunden drücken dürfen, dann würde ein Reset auf Werkseinstellungen durchgeführt und der Router müsste neu konfiguriert werden.</p><p><img src='https://raw.githubusercontent.com/AO-Ingo/Betrieb-Stoerungen/main/assets/router-reset.png' alt='Router Reset Taste' style='max-width:300px'></p><p>Betroffene EVSE-IDs: ${evseList}</p>`,
     station: `<p>Guten Tag,</p><p>die Ladepunkte am Standort "${standortName}" sind aktuell offline.<br>Der Router bzw. die SIM-Karte ist aber online, daher scheint es direkt an der Station "${s.interne_id}" zu liegen.<br>Könnten Sie vielleicht einmal einen Neustart veranlassen (durch aus- und wieder einsichern der Anlage)?</p><p>Falls der Ausfall planmäßig ist, würden wir uns auch über eine kurze Rückmeldung freuen.</p><p>Betroffene EVSE-IDs: ${evseList}</p>`,
     stoerung_neustart: `<p>Guten Tag,</p><p>die Ladepunkte (${evseList}) am Standort "${standortName}" melden aktuell eine Störung.</p><p>Könnten Sie die Station einmal auf Beschädigungen o.ä. untersuchen lassen und einen Neustart veranlassen (durch aus- und wieder einsichern der Anlage)?</p><p>Seriennummer der Station: ${s.interne_id}</p>`,
-    stoerung_sicherung: `<p>Guten Tag,</p><p>die Ladepunkte (${evseList}) am Standort "${standortName}" melden aktuell eine Störung.</p><p>Es scheint eine Sicherung gefallen zu sein.<br>Gibt es eine Haustechnik vor Ort, die sich die Station einmal ansehen und die Sicherung ggf. wieder umlegen könnte?</p><p>Seriennummer der Station: ${s.interne_id}</p>`
+    stoerung_sicherung: `<p>Guten Tag,</p><p>die Ladestation: "${s.interne_id} (Ladepunkte: ${evseList})" am Standort "${standortName}" meldet aktuell eine Störung.</p><p>Es scheint eine Sicherung gefallen zu sein.<br>Gibt es eine Haustechnik vor Ort, die sich die Station einmal ansehen und die Sicherung ggf. wieder umlegen könnte?</p>`
   }
 
   const betreff = {
@@ -1277,7 +1278,7 @@ async function ausgewaehltErledigt() {
   document.querySelectorAll('.app-overlay').forEach(el=>el.remove())  // vorherige Overlays aufräumen (verhindert haengende Fenster bei Doppelklick)
   const overlay = document.createElement('div')
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center'; overlay.className = 'app-overlay'
-  const optionsHtml = ['Neustart stromlos','Neustart RMS','Router Neustart','Softwareupdate','Serviceeinsatz','Sicherung umgelegt','Kein Eingriff','Sonstiges'].map(l=>`<option value="${l}">${l}</option>`).join('')
+  const optionsHtml = ['Neustart stromlos','Neustart RMS','Router Neustart','Softwareupdate','Serviceeinsatz','Sicherung umgelegt','Planmäßig','Kein Eingriff','Sonstiges'].map(l=>`<option value="${l}">${l}</option>`).join('')
   overlay.innerHTML = `<div style="background:#fff;border-radius:10px;padding:20px;min-width:300px;box-shadow:0 8px 30px rgba(0,0,0,0.2)">
     <div style="font-size:14px;font-weight:600;margin-bottom:14px">Lösungsgrund (${selectedCards.size} Stationen)</div>
     <select id="sammel-loesung" style="width:100%;padding:7px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;margin-bottom:8px">
@@ -1556,7 +1557,7 @@ async function updateCounts() {
 }
 
 const TAB_LABELS = { 'offline':'Offline','stoerung':'Störung','erl-offline':'Offline erledigt','erl-stoerung':'Störung erledigt','irr-offline':'Offline irrelevant','irr-stoerung':'Störung irrelevant','statistik':'Statistik' }
-const LOESUNGEN = ['Neustart stromlos', 'Neustart RMS', 'Router Neustart', 'Softwareupdate', 'Serviceeinsatz', 'Sicherung umgelegt', 'Kein Eingriff', 'Sonstiges']
+const LOESUNGEN = ['Neustart stromlos', 'Neustart RMS', 'Router Neustart', 'Softwareupdate', 'Serviceeinsatz', 'Sicherung umgelegt', 'Planmäßig', 'Kein Eingriff', 'Sonstiges']
 
 function setTab(t) {
   tab = t
@@ -2351,6 +2352,7 @@ function renderRueckwaertsSchritt() {
         <option value="Softwareupdate">Softwareupdate</option>
         <option value="Serviceeinsatz">Serviceeinsatz</option>
         <option value="Sicherung umgelegt">Sicherung umgelegt</option>
+        <option value="Planmäßig">Planmäßig</option>
         <option value="Kein Eingriff">Kein Eingriff</option>
         <option value="Sonstiges">Sonstiges</option>
       </select>
