@@ -522,6 +522,15 @@ const GRUENDE = ['Keine Betreuung','Veraltet','Warten auf Kunden','Noch nicht in
 let tab = 'offline', stationen = [], parsed = []
 const H = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' }
 
+function toggleWiederholungen() {
+  const extra = document.getElementById('wieder-extra')
+  const btn = document.getElementById('wieder-toggle-btn')
+  if (!extra || !btn) return
+  const offen = extra.style.display !== 'none'
+  extra.style.display = offen ? 'none' : 'block'
+  btn.textContent = offen ? btn.dataset.labelZu : '▴ Weniger anzeigen'
+}
+
 async function sb(path, opts = {}) {
   const r = await fetch(SB_URL + '/rest/v1/' + path, { ...opts, headers: { ...H, 'Prefer': opts.prefer||'return=representation', ...(opts.headers||{}) } })
   const t = await r.text()
@@ -664,7 +673,8 @@ async function ladeStatistik() {
       if (!wiederholungMap[key]) wiederholungMap[key] = { name: s.kundenname||s.interne_id, standort: s.standort||'', count: 0 }
       wiederholungMap[key].count++
     }
-    const wiederholungen = Object.values(wiederholungMap).filter(s=>s.count>1).sort((a,b)=>b.count-a.count).slice(0,8)
+    const wiederholungenAlle = Object.values(wiederholungMap).filter(s=>s.count>1).sort((a,b)=>b.count-a.count)
+    const wiederholungen = wiederholungenAlle.slice(0,8)
 
     // Standorte mit aktuell meisten Ausfällen (aktive Offline+Störung nach Standort)
     const standortMap = {}
@@ -819,6 +829,18 @@ async function ladeStatistik() {
           </div>
           ${barHtml(s.count,maxW,'#6d28d9')}
         </div>`).join('') : '<div style="color:var(--text3);font-size:13px">Keine Wiederholungsausfälle</div>'}
+        ${wiederholungenAlle.length>8 ? `
+        <div id="wieder-extra" style="display:none">
+          ${wiederholungenAlle.slice(8).map(s=>`<div style="margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;font-size:13px">
+              <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:75%">${s.name}${s.standort?' · '+s.standort:''}</span>
+              <span style="font-weight:600;flex-shrink:0">${s.count}× ausgefallen</span>
+            </div>
+            ${barHtml(s.count,maxW,'#6d28d9')}
+          </div>`).join('')}
+        </div>
+        <button id="wieder-toggle-btn" data-label-zu="▾ Alle ${wiederholungenAlle.length} anzeigen" onclick="toggleWiederholungen()" style="margin-top:4px;background:none;border:none;color:var(--orange);font-size:12px;font-weight:600;cursor:pointer;padding:4px 0">▾ Alle ${wiederholungenAlle.length} anzeigen</button>
+        ` : ''}
       </div>
 
       <div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-top:16px">
