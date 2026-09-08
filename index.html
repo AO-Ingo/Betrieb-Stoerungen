@@ -670,7 +670,7 @@ async function ladeStatistik() {
     const wiederholungMap = {}
     for (const s of erledigt) {
       const key = s.interne_id
-      if (!wiederholungMap[key]) wiederholungMap[key] = { name: s.kundenname||s.interne_id, standort: s.standort||'', count: 0 }
+      if (!wiederholungMap[key]) wiederholungMap[key] = { name: s.kundenname||s.interne_id, standort: s.standort||'', interneId: s.interne_id, count: 0 }
       wiederholungMap[key].count++
     }
     const wiederholungenAlle = Object.values(wiederholungMap).filter(s=>s.count>1).sort((a,b)=>b.count-a.count)
@@ -824,7 +824,7 @@ async function ladeStatistik() {
         <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px">Stationen mit Wiederholungsausfällen</div>
         ${wiederholungen.length ? wiederholungen.map(s=>`<div style="margin-bottom:10px">
           <div style="display:flex;justify-content:space-between;font-size:13px">
-            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:75%">${s.name}${s.standort?' · '+s.standort:''}</span>
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:75%">${s.name}${s.standort?' · '+s.standort:''}<span style="color:var(--text3);font-weight:400"> · ID: ${s.interneId}</span></span>
             <span style="font-weight:600;flex-shrink:0">${s.count}× ausgefallen</span>
           </div>
           ${barHtml(s.count,maxW,'#6d28d9')}
@@ -833,7 +833,7 @@ async function ladeStatistik() {
         <div id="wieder-extra" style="display:none">
           ${wiederholungenAlle.slice(8).map(s=>`<div style="margin-bottom:10px">
             <div style="display:flex;justify-content:space-between;font-size:13px">
-              <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:75%">${s.name}${s.standort?' · '+s.standort:''}</span>
+              <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:75%">${s.name}${s.standort?' · '+s.standort:''}<span style="color:var(--text3);font-weight:400"> · ID: ${s.interneId}</span></span>
               <span style="font-weight:600;flex-shrink:0">${s.count}× ausgefallen</span>
             </div>
             ${barHtml(s.count,maxW,'#6d28d9')}
