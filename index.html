@@ -2308,7 +2308,7 @@ async function doImport() {
   // Rückwärtsprüfung: aktive Stationen die nicht im Import sind
   let nichtMehrImport = []
   try {
-    const aktive = await sb('stationen?erledigt=eq.false&irrelevant=eq.false&select=id,interne_id,bezeichnung,kundenname,meldungstyp,standort,router_online,sim_online,zoho_ticket_id,zoho_ticket_url,aktualisiert_am,kommentare(*)') || []
+    const aktive = await sb('stationen?erledigt=eq.false&irrelevant=eq.false&select=id,interne_id,bezeichnung,kundenname,meldungstyp,standort,gruppe_id,router_online,sim_online,zoho_ticket_id,zoho_ticket_url,aktualisiert_am,kommentare(*)') || []
     const importKeys = new Set(parsed.map(s => s.interne_id + '|||' + (s.bezeichnung||'__NULL__')))
     nichtMehrImport = aktive.filter(s => !importKeys.has(s.interne_id + '|||' + (s.bezeichnung||'__NULL__')))
   } catch(e) {}
@@ -2335,57 +2335,84 @@ let rueckwaertsIndex = 0
 let rueckwaertsErgebnis = {}
 
 function starteRueckwaertsPruefung(liste) {
-  rueckwaertsQueue = (liste || []).slice().sort((a,b) => (a.meldungstyp==='offline'?1:0) - (b.meldungstyp==='offline'?1:0))
+  // Gleiche Gruppierungsregeln wie in der Hauptliste (solo / manuelle Gruppe / Dashboard+Standort), getrennt nach Meldungstyp
+  const gruppen = new Map()
+  for (const s of (liste || [])) {
+    const typ = s.meldungstyp === 'offline' ? 'offline' : 'stoerung'
+    let key
+    if (s.gruppe_id === 'solo') key = typ + '|||solo|||' + s.id
+    else if (s.gruppe_id) key = typ + '|||manual|||' + s.gruppe_id
+    else key = typ + '|||' + (s.kundenname || '') + '|||' + (s.standort || '')
+    if (!gruppen.has(key)) gruppen.set(key, { typ, karten: [] })
+    gruppen.get(key).karten.push(s)
+  }
+  // Störungen zuerst, dann Offline (Sortierung ist stabil)
+  rueckwaertsQueue = [...gruppen.values()].sort((a, b) => (a.typ === 'offline' ? 1 : 0) - (b.typ === 'offline' ? 1 : 0))
   rueckwaertsIndex = 0
   rueckwaertsErgebnis = {}
   renderRueckwaertsSchritt()
 }
 
-function renderRueckwaertsSchritt() {
-  const gesamt = rueckwaertsQueue.length
-  if (rueckwaertsIndex >= gesamt) { renderRueckwaertsZusammenfassung(); return }
-  const s = rueckwaertsQueue[rueckwaertsIndex]
-  const kommentare = (s.kommentare||[]).slice().sort((a,b)=>new Date(b.erstellt_am)-new Date(a.erstellt_am)).slice(0,3)
+function rwStationHtml(s) {
+  const kommentare = (s.kommentare || []).slice().sort((a, b) => new Date(b.erstellt_am) - new Date(a.erstellt_am)).slice(0, 3)
   const kommentareHtml = kommentare.length
-    ? kommentare.map(k=>`<div style="font-size:12px;color:#555;padding:4px 0;border-bottom:1px dashed #eee">💬 ${k.text} <span style="color:#aaa;font-size:10px">(${k.erstellt_am ? new Date(k.erstellt_am).toLocaleDateString('de-DE') : ''})</span></div>`).join('')
-    : `<div style="font-size:12px;color:#999">Keine Kommentare vorhanden</div>`
-  const routerHtml = s.router_online===true ? '🟢 Online' : s.router_online===false ? '🔴 Offline' : '– unbekannt'
-  const simHtml = s.sim_online===true ? '🟢 Online' : s.sim_online===false ? '🔴 Offline' : '– unbekannt'
+    ? kommentare.map(k => `<div style="font-size:12px;color:#555;padding:4px 0;border-bottom:1px dashed #eee">💬 ${k.text} <span style="color:#aaa;font-size:10px">(${k.erstellt_am ? new Date(k.erstellt_am).toLocaleDateString('de-DE') : ''})</span></div>`).join('')
+    : `<div style="font-size:12px;color:#999">Keine Kommentare</div>`
+  const routerHtml = s.router_online === true ? '🟢 Online' : s.router_online === false ? '🔴 Offline' : '– unbekannt'
+  const simHtml = s.sim_online === true ? '🟢 Online' : s.sim_online === false ? '🔴 Offline' : '– unbekannt'
   const ticketHtml = s.zoho_ticket_id
     ? (s.zoho_ticket_url ? `<a href="${s.zoho_ticket_url}" target="_blank">🎫 #${s.zoho_ticket_id}</a>` : `🎫 #${s.zoho_ticket_id}`)
     : '– kein Ticket'
   const aktStr = s.aktualisiert_am ? new Date(s.aktualisiert_am).toLocaleDateString('de-DE') : '–'
+  const erl = rueckwaertsErgebnis[s.id] && rueckwaertsErgebnis[s.id].aktion === 'erledigt'
+  return `<div style="padding:10px 0;border-top:1px solid #fde68a;display:flex;align-items:flex-start;gap:8px">
+    <input type="checkbox" class="rw-check" data-id="${s.id}" ${erl ? '' : 'checked'} style="width:16px;height:16px;margin-top:2px;flex-shrink:0">
+    <div style="flex:1;min-width:0">
+      <div style="font-size:13px;font-weight:600">${s.interne_id}${s.bezeichnung ? ' · ' + s.bezeichnung : ''}${erl ? ' <span style="color:#16a34a;font-weight:400;font-size:11px">✓ bereits erledigt</span>' : ''}</div>
+      <div style="font-size:12px;color:#666;margin:2px 0 6px">Router: ${routerHtml} &nbsp;·&nbsp; SIM: ${simHtml} &nbsp;·&nbsp; ${ticketHtml} &nbsp;·&nbsp; Zuletzt aktualisiert: ${aktStr}</div>
+      ${kommentareHtml}
+    </div>
+  </div>`
+}
+
+function renderRueckwaertsSchritt() {
+  const gesamt = rueckwaertsQueue.length
+  if (rueckwaertsIndex >= gesamt) { renderRueckwaertsZusammenfassung(); return }
+  const g = rueckwaertsQueue[rueckwaertsIndex]
+  // Stationen mit Kommentaren zuerst, damit die relevanten sofort oben stehen
+  const karten = g.karten.slice().sort((a, b) => (b.kommentare || []).length - (a.kommentare || []).length)
+  const erstes = karten[0]
+  const stationenGesamt = rueckwaertsQueue.reduce((n, x) => n + x.karten.length, 0)
 
   document.getElementById('mbody').innerHTML = `
-    <div style="margin-bottom:10px;font-size:12px;color:#888">Station ${rueckwaertsIndex+1} von ${gesamt}</div>
+    <div style="margin-bottom:10px;font-size:12px;color:#888">Schritt ${rueckwaertsIndex + 1} von ${gesamt} &nbsp;·&nbsp; ${stationenGesamt} Stationen insgesamt</div>
     <div style="border:1px solid #fbbf24;border-radius:8px;padding:14px;background:#fffbeb">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        <span class="badge ${s.meldungstyp==='offline'?'badge-offline':'badge-stoerung'}">${s.meldungstyp==='offline'?'⚡ Offline':'⚠ Störung'}</span>
-        <span style="font-weight:600;font-size:14px">${s.kundenname||s.bezeichnung||s.interne_id}</span>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
+        <span class="badge ${g.typ === 'offline' ? 'badge-offline' : 'badge-stoerung'}">${g.typ === 'offline' ? '⚡ Offline' : '⚠ Störung'}</span>
+        <span style="font-weight:600;font-size:14px">${erstes.kundenname || erstes.bezeichnung || erstes.interne_id}</span>
+        ${karten.length > 1 ? `<span class="badge" style="background:var(--bg3);color:var(--text2);font-size:10px">${karten.length} Stationen</span>` : ''}
       </div>
-      <div style="font-size:12px;color:#666;margin-bottom:4px">📍 ${s.standort||'–'} &nbsp;·&nbsp; ID: ${s.interne_id}</div>
-      <div style="font-size:12px;color:#666;margin-bottom:10px">Router: ${routerHtml} &nbsp;·&nbsp; SIM: ${simHtml} &nbsp;·&nbsp; ${ticketHtml} &nbsp;·&nbsp; Zuletzt aktualisiert: ${aktStr}</div>
-      <div style="margin-bottom:12px">${kommentareHtml}</div>
+      <div style="font-size:12px;color:#666;margin-bottom:8px">📍 ${erstes.standort || '–'}</div>
+      ${karten.length > 1 ? `<div style="margin-bottom:6px"><button class="btn btn-secondary btn-sm" onclick="rwAlleToggle()">Alle an-/abwählen</button></div>` : ''}
+      <div style="margin-bottom:12px">${karten.map(rwStationHtml).join('')}</div>
       <select id="rueckwaerts-loesung-aktuell" style="width:100%;padding:6px 10px;border:1px solid #fcd34d;border-radius:6px;font-size:12px;font-family:'DM Sans',sans-serif;background:#fff">
         <option value="">– Lösung wählen (nur für "Erledigt") –</option>
-        <option value="Neustart stromlos">Neustart stromlos</option>
-        <option value="Neustart RMS">Neustart RMS</option>
-        <option value="Router Neustart">Router Neustart</option>
-        <option value="Softwareupdate">Softwareupdate</option>
-        <option value="Serviceeinsatz">Serviceeinsatz</option>
-        <option value="Sicherung umgelegt">Sicherung umgelegt</option>
-        <option value="Planmäßig">Planmäßig</option>
-        <option value="Kein Eingriff">Kein Eingriff</option>
-        <option value="Sonstiges">Sonstiges</option>
+        ${LOESUNGEN.map(l => `<option value="${l}">${l}</option>`).join('')}
       </select>
     </div>
     <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-      <button class="btn btn-secondary btn-sm" onclick="rueckwaertsZurueck()" ${rueckwaertsIndex===0?'disabled':''}>← Zurück</button>
+      <button class="btn btn-secondary btn-sm" onclick="rueckwaertsZurueck()" ${rueckwaertsIndex === 0 ? 'disabled' : ''}>← Zurück</button>
       <button class="btn btn-secondary btn-sm" onclick="rueckwaertsUeberspringen()">Überspringen →</button>
-      <button class="btn btn-green btn-sm" onclick="rueckwaertsErledigt()">✓ Erledigt markieren</button>
+      <button class="btn btn-green btn-sm" onclick="rueckwaertsErledigt()">✓ Ausgewählte erledigt markieren</button>
     </div>
   `
   document.getElementById('mfoot').innerHTML = `<button class="btn btn-secondary" onclick="closeImport();loadStationen()">Abbrechen &amp; schließen</button>`
+}
+
+function rwAlleToggle() {
+  const boxen = [...document.querySelectorAll('.rw-check')]
+  const alleAn = boxen.every(cb => cb.checked)
+  boxen.forEach(cb => { cb.checked = !alleAn })
 }
 
 function rueckwaertsZurueck() {
@@ -2393,22 +2420,38 @@ function rueckwaertsZurueck() {
 }
 
 function rueckwaertsUeberspringen() {
-  const s = rueckwaertsQueue[rueckwaertsIndex]
-  rueckwaertsErgebnis[s.id] = { aktion: 'uebersprungen' }
+  const g = rueckwaertsQueue[rueckwaertsIndex]
+  for (const s of g.karten) {
+    if (!(rueckwaertsErgebnis[s.id] && rueckwaertsErgebnis[s.id].aktion === 'erledigt')) rueckwaertsErgebnis[s.id] = { aktion: 'uebersprungen' }
+  }
   rueckwaertsIndex++
   renderRueckwaertsSchritt()
 }
 
 async function rueckwaertsErledigt() {
-  const s = rueckwaertsQueue[rueckwaertsIndex]
+  const g = rueckwaertsQueue[rueckwaertsIndex]
   const sel = document.getElementById('rueckwaerts-loesung-aktuell')
   const loesung = sel ? sel.value : ''
+  const gewaehlt = new Set([...document.querySelectorAll('.rw-check:checked')].map(cb => cb.dataset.id))
+  if (!gewaehlt.size) { alert('Keine Station ausgewählt. Zum Weitergehen "Überspringen" nutzen.'); return }
   if (!loesung) { alert('Bitte einen Lösungsgrund wählen.'); return }
-  try {
-    await sbPatchStation(s.id, { erledigt: true, loesung, prioritaet_farbe: 'gruen' })
-    rueckwaertsErgebnis[s.id] = { aktion: 'erledigt', loesung }
-  } catch(e) {
-    alert('Fehler beim Speichern: ' + e.message)
+
+  const fehler = []
+  for (const s of g.karten) {
+    if (!gewaehlt.has(s.id)) {
+      if (!(rueckwaertsErgebnis[s.id] && rueckwaertsErgebnis[s.id].aktion === 'erledigt')) rueckwaertsErgebnis[s.id] = { aktion: 'uebersprungen' }
+      continue
+    }
+    try {
+      await sbPatchStation(s.id, { erledigt: true, loesung, prioritaet_farbe: 'gruen' })
+      rueckwaertsErgebnis[s.id] = { aktion: 'erledigt', loesung }
+    } catch (e) {
+      fehler.push(s.interne_id + ': ' + e.message)
+    }
+  }
+  if (fehler.length) {
+    alert('Fehler beim Speichern (bitte erneut versuchen):\n' + fehler.join('\n'))
+    renderRueckwaertsSchritt()
     return
   }
   rueckwaertsIndex++
@@ -2416,8 +2459,8 @@ async function rueckwaertsErledigt() {
 }
 
 function renderRueckwaertsZusammenfassung() {
-  const erledigtCount = Object.values(rueckwaertsErgebnis).filter(r=>r.aktion==='erledigt').length
-  const uebersprCount = Object.values(rueckwaertsErgebnis).filter(r=>r.aktion==='uebersprungen').length
+  const erledigtCount = Object.values(rueckwaertsErgebnis).filter(r => r.aktion === 'erledigt').length
+  const uebersprCount = Object.values(rueckwaertsErgebnis).filter(r => r.aktion === 'uebersprungen').length
   document.getElementById('mbody').innerHTML = `
     <div style="text-align:center;padding:20px 0">
       <div style="font-size:15px;font-weight:600;margin-bottom:8px">✓ Durcharbeitung abgeschlossen</div>
