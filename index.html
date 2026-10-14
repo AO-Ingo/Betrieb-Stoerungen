@@ -866,9 +866,13 @@ function mentionAktuellesWort(input) {
   return match ? match[1] : null
 }
 
+let mentionInputEl = null
+function mentionDd(input) { return input.parentElement.querySelector('.mention-dd') }
+
 function mentionCheck(input) {
+  mentionInputEl = input
   const teilwort = mentionAktuellesWort(input)
-  const dd = document.getElementById('mention-dropdown')
+  const dd = mentionDd(input)
   if (teilwort === null) { mentionAktiv = false; dd.style.display = 'none'; return }
   mentionGefiltert = MENTION_OPTIONEN.filter(o => o.kuerzel.toLowerCase().startsWith(teilwort.toLowerCase()) || o.name.toLowerCase().startsWith(teilwort.toLowerCase()))
   if (!mentionGefiltert.length) { mentionAktiv = false; dd.style.display = 'none'; return }
@@ -878,9 +882,9 @@ function mentionCheck(input) {
 }
 
 function mentionRender(input) {
-  const dd = document.getElementById('mention-dropdown')
+  const dd = mentionDd(input)
   dd.innerHTML = mentionGefiltert.map((o, i) => `
-    <div onclick="mentionAuswahl(${i}, document.getElementById('dp-kommentar-input'))" style="padding:7px 12px;cursor:pointer;font-size:13px;${i===mentionIndex?'background:var(--orange-bg)':''}">
+    <div onclick="mentionAuswahl(${i}, mentionInputEl)" style="padding:7px 12px;cursor:pointer;font-size:13px;${i===mentionIndex?'background:var(--orange-bg)':''}">
       <strong>@${o.kuerzel}</strong> <span style="color:var(--text3)">${o.name}</span>
     </div>`).join('')
   dd.style.display = 'block'
@@ -898,18 +902,180 @@ function mentionAuswahl(i, input) {
   input.focus()
   input.setSelectionRange(neuePos, neuePos)
   mentionAktiv = false
-  document.getElementById('mention-dropdown').style.display = 'none'
+  mentionDd(input).style.display = 'none'
 }
 
-function mentionKeydown(event, stationId) {
+function mentionKeydown(event, stationId, modus) {
   const input = event.target
   if (mentionAktiv) {
     if (event.key === 'ArrowDown') { event.preventDefault(); mentionIndex = (mentionIndex + 1) % mentionGefiltert.length; mentionRender(input); return }
     if (event.key === 'ArrowUp') { event.preventDefault(); mentionIndex = (mentionIndex - 1 + mentionGefiltert.length) % mentionGefiltert.length; mentionRender(input); return }
     if (event.key === 'Enter' || event.key === 'Tab') { event.preventDefault(); mentionAuswahl(mentionIndex, input); return }
-    if (event.key === 'Escape') { mentionAktiv = false; document.getElementById('mention-dropdown').style.display = 'none'; return }
+    if (event.key === 'Escape') { mentionAktiv = false; mentionDd(input).style.display = 'none'; return }
   }
-  if (event.key === 'Enter') addKommentar(stationId)
+  if (event.key === 'Enter') { if (modus === 'grp') addGruppenKommentar(stationId); else addKommentar(stationId) }
+}
+
+// ===== Gruppenkommentare (Wissenspool der Gruppenkarte) =====
+let gruppenKommentare = []
+let gruppenKommentareOk = true
+const gruppenKeyMap = {}     // DOM-Id der Gruppe -> echter Gruppenschlüssel
+const gkEsc = t => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
+async function ladeGruppenKommentare() {
+  try {
+    gruppenKommentare = await sb('gruppen_kommentare?select=*&order=erstellt_am.desc') || []
+    gruppenKommentareOk = true
+  } catch (e) {
+    gruppenKommentare = []
+    gruppenKommentareOk = false
+  }
+}
+
+// Schlüssel einer Gruppe: manuelle Gruppe = gruppe_id, sonst Dashboard + Standort (wie in der Hauptliste)
+function gruppenKeyVon(s) {
+  if (s.gruppe_id && s.gruppe_id !== 'solo') return 'manual-' + s.gruppe_id
+  return (s.kundenname || '') + '|||' + (s.standort || '')
+}
+
+// "Aktuell" = seit Beginn des laufenden Ausfalls (Anlage der ältesten Karte der Gruppe), alles davor = ältere Kommentare
+function gruppenKommentareAufteilen(key, karten) {
+  const alle = gruppenKommentare.filter(k => k.gruppen_key === key)
+  const start = Math.min(...karten.map(s => new Date(s.erstellt_am || 0).getTime()))
+  return {
+    aktuell: alle.filter(k => new Date(k.erstellt_am).getTime() >= start),
+    aelter: alle.filter(k => new Date(k.erstellt_am).getTime() < start)
+  }
+}
+
+function gkDatum(k) {
+  const dt = new Date(k.erstellt_am)
+  return dt.toLocaleDateString('de-DE') + ' ' + dt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+}
+
+function gruppenKommentarItemHtml(k) {
+  return `<div style="border-left:2px solid var(--orange);padding:6px 10px;margin-bottom:6px;background:var(--bg);border-radius:0 var(--radius) var(--radius) 0">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
+      <span style="font-size:11px;color:var(--text3)">${gkDatum(k)}</span>
+      <div style="display:flex;gap:2px">
+        <button onclick="gkEdit('${k.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:11px;padding:1px 4px">✏</button>
+        <button onclick="loescheGruppenKommentar('${k.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:11px;padding:1px 4px">🗑</button>
+      </div>
+    </div>
+    <div style="font-size:13px;color:var(--text)" id="gk-text-${k.id}">${gkEsc(k.text)}</div>
+    <div id="gk-edit-${k.id}" style="display:none;margin-top:6px">
+      <input id="gk-input-${k.id}" value="${gkEsc(k.text)}" style="width:100%;padding:4px 8px;border:1px solid var(--border2);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif;background:var(--bg)">
+      <div style="display:flex;gap:4px;margin-top:4px">
+        <button class="btn btn-primary btn-sm" onclick="speichereGruppenKommentar('${k.id}')">Speichern</button>
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('gk-edit-${k.id}').style.display='none';document.getElementById('gk-text-${k.id}').style.display=''">Abbrechen</button>
+      </div>
+    </div>
+  </div>`
+}
+
+function gruppenKommentarBlockHtml(key, karten, gruppeId) {
+  if (!gruppenKommentareOk) {
+    return `<div style="font-size:11px;color:var(--text3);padding:6px 0">Gruppenkommentare sind noch nicht eingerichtet (Supabase-Tabelle fehlt).</div>`
+  }
+  const { aktuell, aelter } = gruppenKommentareAufteilen(key, karten)
+  return `<div onclick="event.stopPropagation()" style="margin:4px 0 8px;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--radius);background:var(--bg2)">
+    <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">💬 Gruppenkommentare</div>
+    <div style="display:flex;gap:6px;margin-bottom:8px;position:relative">
+      <input id="gk-new-${gruppeId}" placeholder="Kommentar für die ganze Gruppe… (@ für Erwähnung)" style="flex:1;padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif;background:var(--bg)" autocomplete="off" oninput="mentionCheck(this)" onkeydown="mentionKeydown(event,'${gruppeId}','grp')">
+      <button class="btn btn-primary btn-sm" onclick="addGruppenKommentar('${gruppeId}')">+ Hinzufügen</button>
+      <div class="mention-dd" style="display:none;position:absolute;bottom:38px;left:0;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);box-shadow:0 4px 14px rgba(0,0,0,0.18);z-index:50;min-width:210px;overflow:hidden"></div>
+    </div>
+    ${aktuell.map(gruppenKommentarItemHtml).join('') || '<div style="color:var(--text3);font-size:12px">Noch keine Kommentare für diesen Ausfall</div>'}
+    ${aelter.length ? `<details style="margin-top:6px"><summary style="cursor:pointer;font-size:12px;color:var(--text3)">Ältere Kommentare zu diesem Standort (${aelter.length})</summary><div style="margin-top:6px">${aelter.map(gruppenKommentarItemHtml).join('')}</div></details>` : ''}
+  </div>`
+}
+
+// Nur-Lesen-Ansicht für die Durcharbeitung beim Import
+function gruppenKommentareReadonlyHtml(key, karten) {
+  const { aktuell, aelter } = gruppenKommentareAufteilen(key, karten)
+  if (!aktuell.length && !aelter.length) return ''
+  const zeile = k => `<div style="font-size:12px;color:#555;padding:4px 0;border-bottom:1px dashed #eee">💬 ${gkEsc(k.text)} <span style="color:#aaa;font-size:10px">(${gkDatum(k)})</span></div>`
+  return `<div style="margin-bottom:10px;padding:8px 10px;border:1px solid #fcd34d;border-radius:6px;background:#fff">
+    <div style="font-size:11px;font-weight:600;color:#92400e;margin-bottom:4px">GRUPPENKOMMENTARE</div>
+    ${aktuell.map(zeile).join('') || '<div style="font-size:12px;color:#999">Keine Kommentare für diesen Ausfall</div>'}
+    ${aelter.length ? `<details style="margin-top:4px"><summary style="cursor:pointer;font-size:12px;color:#999">Ältere Kommentare zu diesem Standort (${aelter.length})</summary>${aelter.map(zeile).join('')}</details>` : ''}
+  </div>`
+}
+
+function gkEdit(id) {
+  document.getElementById('gk-text-' + id).style.display = 'none'
+  document.getElementById('gk-edit-' + id).style.display = 'block'
+  document.getElementById('gk-input-' + id).focus()
+}
+
+// Neu laden, ohne dass aufgeklappte Gruppen wieder zuklappen
+async function neuLadenMitOffenenGruppen() {
+  const offen = [...document.querySelectorAll('.gruppe-cards.open')].map(el => el.id)
+  await loadStationen()
+  offen.forEach(id => { if (document.getElementById(id)) toggleGruppe(id) })
+}
+
+async function addGruppenKommentar(gruppeId) {
+  const input = document.getElementById('gk-new-' + gruppeId)
+  const text = input ? input.value.trim() : ''
+  if (!text) return
+  const key = gruppenKeyMap[gruppeId]
+  const karten = gruppenKartenMap[gruppeId] || []
+  if (!key || !karten.length) { alert('Gruppe nicht gefunden'); return }
+  try {
+    const namenMap = { 'IV': 'Ingo Vogt', 'DS': 'Dmitrij Smolenski', 'FB': 'Ferdinand Busalt' }
+    const textMitNamen = text
+      .replace(/@IV/gi, '@Ingo Vogt')
+      .replace(/@DS/gi, '@Dmitrij Smolenski')
+      .replace(/@FB/gi, '@Ferdinand Busalt')
+
+    await sb('gruppen_kommentare', { method: 'POST', body: JSON.stringify({ gruppen_key: key, text: textMitNamen }) })
+    await sbPatchStation(karten[0].id, { aktualisiert_am: new Date().toISOString() })
+    input.value = ''
+
+    const erwaehnte = []
+    if (/@iv\b/i.test(text)) erwaehnte.push('IV')
+    if (/@ds\b/i.test(text)) erwaehnte.push('DS')
+    if (/@fb\b/i.test(text)) erwaehnte.push('FB')
+    if (erwaehnte.length) {
+      const dashboards = [...new Set(karten.map(s => s.kundenname).filter(Boolean))]
+      const standort = karten.map(s => s.standort).find(Boolean) || ''
+      const erste = karten[0]
+      for (const initialen of erwaehnte) {
+        fetch('https://hook.eu2.make.com/sz2mliv7qcnp5q5kob7xkc92yfy05lj9', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            initialen,
+            name: namenMap[initialen] || initialen,
+            kommentar: textMitNamen,
+            station: (dashboards.join(', ') || erste.interne_id) + ' (Gruppe, ' + karten.length + ' Stationen)',
+            standort,
+            interne_id: erste.interne_id,
+            app_url: 'https://ao-ingo.github.io/Betrieb-Stoerungen?station=' + encodeURIComponent(erste.interne_id)
+          })
+        }).catch(() => {})
+      }
+    }
+    await neuLadenMitOffenenGruppen()
+  } catch (e) { alert('Fehler: ' + e.message) }
+}
+
+async function speichereGruppenKommentar(id) {
+  const text = document.getElementById('gk-input-' + id).value.trim()
+  if (!text) return
+  try {
+    await sb(`gruppen_kommentare?id=eq.${id}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ text }) })
+    await neuLadenMitOffenenGruppen()
+  } catch (e) { alert('Fehler: ' + e.message) }
+}
+
+async function loescheGruppenKommentar(id) {
+  if (!confirm('Gruppenkommentar löschen?')) return
+  try {
+    await sb(`gruppen_kommentare?id=eq.${id}`, { method: 'DELETE', prefer: 'return=minimal' })
+    await neuLadenMitOffenenGruppen()
+  } catch (e) { alert('Fehler: ' + e.message) }
 }
 
 async function addKommentar(stationId) {
@@ -1559,6 +1725,7 @@ async function loadStationen() {
     else if (tab === 'irr-offline')   q = 'stationen?meldungstyp=eq.offline&irrelevant=eq.true&erledigt=eq.false&select=*,ladepunkte(*),kommentare(*)&order=erstellt_am.desc'
     else                              q = 'stationen?meldungstyp=eq.stoerung&irrelevant=eq.true&erledigt=eq.false&select=*,ladepunkte(*)&order=erstellt_am.desc'
     stationen = await sb(q) || []
+    await ladeGruppenKommentare()
     await updateCounts()
     renderList()
   } catch(e) {
@@ -1600,6 +1767,8 @@ function gruppenBlockHTML(key, gruppierte) {
   const standorte = [...new Set(gruppierte.map(s => s.standort).filter(Boolean))]
   const standort = standorte.length === 1 ? standorte[0] : ''
   const gruppeId = 'grp-' + key.replace(/[^a-zA-Z0-9]/g, '-')
+  gruppenKeyMap[gruppeId] = key
+  gruppenKartenMap[gruppeId] = gruppierte
   const farben = gruppierte.map(s => s.prioritaet_farbe).filter(Boolean)
 
   // Farbklasse der Gruppe = stärkste Farbe
@@ -1613,7 +1782,8 @@ function gruppenBlockHTML(key, gruppierte) {
   const grpRouter = gruppierte.some(s=>s.router_online===true) ? `<span style="font-size:12px;color:#16a34a">🟢${ICON_ROUTER}</span>` : gruppierte.some(s=>s.router_online===false) ? `<span style="font-size:12px;color:#dc2626">🔴${ICON_ROUTER}</span>` : ''
   const grpSim = gruppierte.some(s=>s.sim_online===true) ? `<span style="font-size:12px;color:#16a34a">🟢${ICON_SIM}</span>` : gruppierte.some(s=>s.sim_online===false) ? `<span style="font-size:12px;color:#dc2626">🔴${ICON_SIM}</span>` : ''
   // Neuester Kommentar aus allen Karten der Gruppe
-  const grpKommentare = gruppierte.flatMap(s=>s.kommentare||[]).sort((a,b)=>new Date(b.erstellt_am)-new Date(a.erstellt_am))
+  const grpAktuelleGK = gruppenKommentareOk ? gruppenKommentareAufteilen(key, gruppierte).aktuell : []
+  const grpKommentare = [...gruppierte.flatMap(s=>s.kommentare||[]), ...grpAktuelleGK].sort((a,b)=>new Date(b.erstellt_am)-new Date(a.erstellt_am))
   const grpNeusterK = grpKommentare[0]
   const grpKVorschau = grpNeusterK ? `<span style="font-size:11px;color:var(--text2);background:var(--bg2);border-left:2px solid var(--orange);padding:1px 6px;border-radius:0 3px 3px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:250px">💬 ${grpNeusterK.text}</span>` : ''
   // Erste vorhandene Ticketnummer aus den zugeordneten Karten
@@ -1661,6 +1831,7 @@ function gruppenBlockHTML(key, gruppierte) {
           </div>
         </div>
         <div class="gruppe-cards" id="${gruppeId}">
+          ${gruppenKommentarBlockHtml(key, gruppierte, gruppeId)}
           ${gruppierte.map(s => cardHTML(s, true)).join('')}
         </div>
       </div>`
@@ -2013,7 +2184,7 @@ function openDetail(id) {
       <div style="display:flex;gap:6px;margin-bottom:10px;position:relative">
         <input id="dp-kommentar-input" placeholder="Neuer Kommentar… (@ für Erwähnung)" style="flex:1;padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif;background:var(--bg2)" autocomplete="off" oninput="mentionCheck(this)" onkeydown="mentionKeydown(event,'${s.id}')">
         <button class="btn btn-primary btn-sm" onclick="addKommentar('${s.id}')">+ Hinzufügen</button>
-        <div id="mention-dropdown" style="display:none;position:absolute;bottom:38px;left:0;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);box-shadow:0 4px 14px rgba(0,0,0,0.18);z-index:50;min-width:210px;overflow:hidden"></div>
+        <div id="mention-dropdown" class="mention-dd" style="display:none;position:absolute;bottom:38px;left:0;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);box-shadow:0 4px 14px rgba(0,0,0,0.18);z-index:50;min-width:210px;overflow:hidden"></div>
       </div>
       <div id="dp-kommentare-list">
         ${(s.kommentare||[]).sort((a,b)=>new Date(b.erstellt_am)-new Date(a.erstellt_am)).map(k=>{
@@ -2308,7 +2479,7 @@ async function doImport() {
   // Rückwärtsprüfung: aktive Stationen die nicht im Import sind
   let nichtMehrImport = []
   try {
-    const aktive = await sb('stationen?erledigt=eq.false&irrelevant=eq.false&select=id,interne_id,bezeichnung,kundenname,meldungstyp,standort,gruppe_id,router_online,sim_online,zoho_ticket_id,zoho_ticket_url,aktualisiert_am,kommentare(*)') || []
+    const aktive = await sb('stationen?erledigt=eq.false&irrelevant=eq.false&select=id,interne_id,bezeichnung,kundenname,meldungstyp,standort,gruppe_id,erstellt_am,router_online,sim_online,zoho_ticket_id,zoho_ticket_url,aktualisiert_am,kommentare(*)') || []
     const importKeys = new Set(parsed.map(s => s.interne_id + '|||' + (s.bezeichnung||'__NULL__')))
     nichtMehrImport = aktive.filter(s => !importKeys.has(s.interne_id + '|||' + (s.bezeichnung||'__NULL__')))
   } catch(e) {}
@@ -2324,7 +2495,7 @@ async function doImport() {
   window.__nichtMehrImport = nichtMehrImport
   if (nichtMehrImport.length) {
     document.getElementById('mfoot').innerHTML = ''
-    setTimeout(() => starteRueckwaertsPruefung(nichtMehrImport), 900)
+    setTimeout(async () => { await ladeGruppenKommentare(); starteRueckwaertsPruefung(nichtMehrImport) }, 900)
   } else {
     document.getElementById('mfoot').innerHTML=`<button class="btn btn-primary" onclick="closeImport();loadStationen()">Fertig</button>`
   }
@@ -2382,6 +2553,8 @@ function renderRueckwaertsSchritt() {
   // Stationen mit Kommentaren zuerst, damit die relevanten sofort oben stehen
   const karten = g.karten.slice().sort((a, b) => (b.kommentare || []).length - (a.kommentare || []).length)
   const erstes = karten[0]
+  const gkKey = erstes.gruppe_id === 'solo' ? null : gruppenKeyVon(erstes)
+  const gkHtml = gkKey && gruppenKommentareOk ? gruppenKommentareReadonlyHtml(gkKey, karten) : ''
   const stationenGesamt = rueckwaertsQueue.reduce((n, x) => n + x.karten.length, 0)
 
   document.getElementById('mbody').innerHTML = `
@@ -2394,6 +2567,7 @@ function renderRueckwaertsSchritt() {
       </div>
       <div style="font-size:12px;color:#666;margin-bottom:8px">📍 ${erstes.standort || '–'}</div>
       ${karten.length > 1 ? `<div style="margin-bottom:6px"><button class="btn btn-secondary btn-sm" onclick="rwAlleToggle()">Alle an-/abwählen</button></div>` : ''}
+      ${gkHtml}
       <div style="margin-bottom:12px">${karten.map(rwStationHtml).join('')}</div>
       <select id="rueckwaerts-loesung-aktuell" style="width:100%;padding:6px 10px;border:1px solid #fcd34d;border-radius:6px;font-size:12px;font-family:'DM Sans',sans-serif;background:#fff">
         <option value="">– Lösung wählen (nur für "Erledigt") –</option>
