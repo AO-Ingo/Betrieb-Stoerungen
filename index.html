@@ -460,6 +460,24 @@ textarea.raw { width: 100%; height: 200px; font-family: 'DM Mono', monospace; fo
   </div>
 </div>
 
+<div class="modal-overlay" id="irrelevant-modal" onclick="if(event.target===this)closeIrrelevantDialog()">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <h2>Grund für Irrelevanz</h2>
+      <button class="toggle-btn" onclick="closeIrrelevantDialog()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="irr-modal-info" style="font-size:13px;color:var(--text2);margin-bottom:12px"></div>
+      <select id="irr-modal-grund" style="width:100%;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif;background:var(--bg2);margin-bottom:8px"></select>
+      <input type="text" id="irr-modal-notiz" placeholder="Zusätzliche Notiz (optional)" style="width:100%;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif;background:var(--bg2)">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeIrrelevantDialog()">Abbrechen</button>
+      <button class="btn btn-red" id="irr-modal-ok" onclick="markiereIrrelevant()">Als irrelevant markieren</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="neue-station-modal">
   <div class="modal" style="max-width:500px">
     <div class="modal-header">
@@ -2228,26 +2246,13 @@ function openDetail(id) {
         }).join('') || '<div style="color:var(--text3);font-size:13px">Noch keine Kommentare</div>'}
       </div>
     </div>
-    ${isAktiv?`
-    <div class="detail-section">
-      <div class="detail-section-title">Aktionen</div>
-      <div id="dp-popup-irr" class="popup-box">
-        <div style="font-weight:500;font-size:13px;margin-bottom:8px">Grund für Irrelevanz</div>
-        <select id="dp-irr-grund">${GRUENDE.map(g=>`<option>${g}</option>`).join('')}</select>
-        <input type="text" id="dp-irr-notiz" placeholder="Zusätzliche Notiz (optional)">
-        <div class="popup-actions">
-          <button class="btn btn-red btn-sm" onclick="markiereIrrelevant('${s.id}')">Bestätigen</button>
-          <button class="btn btn-secondary btn-sm" onclick="togglePopup('dp-popup-irr')">Abbrechen</button>
-        </div>
-      </div>
-    </div>`:''}
   `
 
   // Footer
   let footer = `<button class="btn btn-secondary btn-sm" onclick="toggleEditSection()">✏ Bearbeiten</button>`
   if (isAktiv) {
     footer += `<button class="btn btn-success btn-sm" onclick="oeffneErledigtDialog('${s.id}')">✓ Erledigt</button>`
-    footer += `<button class="btn btn-danger btn-sm" onclick="togglePopup('dp-popup-irr')">✕ Irrelevant</button>`
+    footer += `<button class="btn btn-danger btn-sm" onclick="oeffneIrrelevantDialog('${s.id}')">✕ Irrelevant</button>`
   }
   if (isIrr) footer += `<button class="btn btn-success btn-sm" onclick="reaktivieren('${s.id}')">↩ Reaktivieren</button>`
   if (isErl) footer += `<button class="btn btn-success btn-sm" onclick="reaktivierenAusErledigt('${s.id}')">↩ Reaktivieren</button>`
@@ -2282,10 +2287,6 @@ function closeDetail() {
   document.getElementById('detail-panel').classList.remove('open')
   document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'))
   currentStation = null
-}
-
-function togglePopup(id) {
-  document.getElementById(id).classList.toggle('open')
 }
 
 let erledigtDialogId = null
@@ -2333,15 +2334,46 @@ async function markiereErledigt() {
   finally { btn.disabled = false }
 }
 
-async function markiereIrrelevant(id) {
-  const grund = (document.getElementById('dp-irr-grund') || document.getElementById('irr-grund-'+id)||{value:''}).value
-  const notiz = (document.getElementById('dp-irr-notiz') || document.getElementById('irr-notiz-'+id)||{value:''}).value
+let irrelevantDialogId = null
+
+function oeffneIrrelevantDialog(id) {
+  const s = stationen.find(x => x.id === id)
+  if (!s) return
+  irrelevantDialogId = id
+  document.getElementById('irr-modal-info').textContent = [s.kundenname || s.bezeichnung || s.interne_id, s.standort].filter(Boolean).join(' · ')
+  const sel = document.getElementById('irr-modal-grund')
+  sel.innerHTML = GRUENDE.map(g => `<option>${g}</option>`).join('')
+  document.getElementById('irr-modal-notiz').value = ''
+  document.getElementById('irrelevant-modal').classList.add('open')
+  sel.focus()
+}
+
+function closeIrrelevantDialog() {
+  document.getElementById('irrelevant-modal').classList.remove('open')
+  irrelevantDialogId = null
+}
+
+document.addEventListener('keydown', e => {
+  const m = document.getElementById('irrelevant-modal')
+  if (!m || !m.classList.contains('open')) return
+  if (e.key === 'Escape') closeIrrelevantDialog()
+  if (e.key === 'Enter' && e.target && e.target.id === 'irr-modal-notiz') markiereIrrelevant()
+})
+
+async function markiereIrrelevant() {
+  const id = irrelevantDialogId
+  if (!id) return
+  const grund = document.getElementById('irr-modal-grund').value
+  const notiz = document.getElementById('irr-modal-notiz').value.trim()
+  const btn = document.getElementById('irr-modal-ok')
+  btn.disabled = true
   try {
-    await sbPatchStation(id, { irrelevant: true, irrelevant_grund: notiz ? grund+': '+notiz : grund })
+    await sbPatchStation(id, { irrelevant: true, irrelevant_grund: notiz ? grund + ': ' + notiz : grund })
+    closeIrrelevantDialog()
+    closeDetail()
     await loadStationen()
-    const fresh = stationen.find(x => x.id === id)
-    if (fresh) openDetail(id); else closeDetail()
   } catch(e) { alert('Fehler: '+e.message) }
+  finally { btn.disabled = false }
 }
 
 async function reaktivieren(id) {
