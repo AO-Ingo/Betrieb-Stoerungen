@@ -442,6 +442,24 @@ textarea.raw { width: 100%; height: 200px; font-family: 'DM Mono', monospace; fo
   </div>
 </div>
 
+<div class="modal-overlay" id="erledigt-modal" onclick="if(event.target===this)closeErledigtDialog()">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <h2>Wie wurde die Störung behoben?</h2>
+      <button class="toggle-btn" onclick="closeErledigtDialog()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="erl-modal-info" style="font-size:13px;color:var(--text2);margin-bottom:12px"></div>
+      <select id="erl-modal-select" style="width:100%;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif;background:var(--bg2);margin-bottom:8px" onchange="document.getElementById('erl-modal-sonst').style.display=this.value==='Sonstiges'?'block':'none'"></select>
+      <input id="erl-modal-sonst" placeholder="Beschreibung…" style="display:none;width:100%;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif;background:var(--bg2)">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeErledigtDialog()">Abbrechen</button>
+      <button class="btn btn-green" id="erl-modal-ok" onclick="markiereErledigt()">✓ Erledigt bestätigen</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="neue-station-modal">
   <div class="modal" style="max-width:500px">
     <div class="modal-header">
@@ -2213,17 +2231,6 @@ function openDetail(id) {
     ${isAktiv?`
     <div class="detail-section">
       <div class="detail-section-title">Aktionen</div>
-      <div id="dp-popup-erl" class="popup-box">
-        <div style="font-weight:500;font-size:13px;margin-bottom:8px">Wie wurde die Störung behoben?</div>
-        <select id="dp-erl-select" style="width:100%;padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif;background:var(--bg2);margin-bottom:8px" onchange="document.getElementById('dp-erl-sonstiges').style.display=this.value==='Sonstiges'?'block':'none'">
-          ${LOESUNGEN.map(l=>`<option value="${l}">${l}</option>`).join('')}
-        </select>
-        <input id="dp-erl-sonstiges" placeholder="Beschreibung…" style="display:none;width:100%;padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif;background:var(--bg2);margin-bottom:8px">
-        <div class="popup-actions">
-          <button class="btn btn-green btn-sm" onclick="markiereErledigt('${s.id}')">✓ Bestätigen</button>
-          <button class="btn btn-secondary btn-sm" onclick="togglePopup('dp-popup-erl')">Abbrechen</button>
-        </div>
-      </div>
       <div id="dp-popup-irr" class="popup-box">
         <div style="font-weight:500;font-size:13px;margin-bottom:8px">Grund für Irrelevanz</div>
         <select id="dp-irr-grund">${GRUENDE.map(g=>`<option>${g}</option>`).join('')}</select>
@@ -2239,7 +2246,7 @@ function openDetail(id) {
   // Footer
   let footer = `<button class="btn btn-secondary btn-sm" onclick="toggleEditSection()">✏ Bearbeiten</button>`
   if (isAktiv) {
-    footer += `<button class="btn btn-success btn-sm" onclick="togglePopup('dp-popup-erl')">✓ Erledigt</button>`
+    footer += `<button class="btn btn-success btn-sm" onclick="oeffneErledigtDialog('${s.id}')">✓ Erledigt</button>`
     footer += `<button class="btn btn-danger btn-sm" onclick="togglePopup('dp-popup-irr')">✕ Irrelevant</button>`
   }
   if (isIrr) footer += `<button class="btn btn-success btn-sm" onclick="reaktivieren('${s.id}')">↩ Reaktivieren</button>`
@@ -2281,14 +2288,49 @@ function togglePopup(id) {
   document.getElementById(id).classList.toggle('open')
 }
 
-async function markiereErledigt(id) {
-  const sel = document.getElementById('dp-erl-select')
-  const sonst = document.getElementById('dp-erl-sonstiges')
-  const loesung = sel ? (sel.value === 'Sonstiges' && sonst ? sel.value + ': ' + sonst.value : sel.value) : (document.getElementById('erl-txt-'+id)||{}).value||''
+let erledigtDialogId = null
+
+function oeffneErledigtDialog(id) {
+  const s = stationen.find(x => x.id === id)
+  if (!s) return
+  erledigtDialogId = id
+  document.getElementById('erl-modal-info').textContent = [s.kundenname || s.bezeichnung || s.interne_id, s.standort].filter(Boolean).join(' · ')
+  const sel = document.getElementById('erl-modal-select')
+  sel.innerHTML = LOESUNGEN.map(l => `<option value="${l}">${l}</option>`).join('')
+  const sonst = document.getElementById('erl-modal-sonst')
+  sonst.value = ''
+  sonst.style.display = 'none'
+  document.getElementById('erledigt-modal').classList.add('open')
+  sel.focus()
+}
+
+function closeErledigtDialog() {
+  document.getElementById('erledigt-modal').classList.remove('open')
+  erledigtDialogId = null
+}
+
+document.addEventListener('keydown', e => {
+  const m = document.getElementById('erledigt-modal')
+  if (!m || !m.classList.contains('open')) return
+  if (e.key === 'Escape') closeErledigtDialog()
+  if (e.key === 'Enter' && e.target && e.target.id === 'erl-modal-sonst') markiereErledigt()
+})
+
+async function markiereErledigt() {
+  const id = erledigtDialogId
+  if (!id) return
+  const sel = document.getElementById('erl-modal-select')
+  const sonst = document.getElementById('erl-modal-sonst')
+  const loesung = sel.value === 'Sonstiges' && sonst.value.trim() ? 'Sonstiges: ' + sonst.value.trim() : sel.value
+  const btn = document.getElementById('erl-modal-ok')
+  btn.disabled = true
   try {
-    await sbPatchStation(id, { erledigt: true, loesung: loesung||null, prioritaet_farbe: 'gruen' })
-    loadStationen()
+    await sbPatchStation(id, { erledigt: true, loesung: loesung || null, prioritaet_farbe: 'gruen' })
+    closeErledigtDialog()
+    closeDetail()
+    await loadStationen()
   } catch(e) { alert('Fehler: '+e.message) }
+  finally { btn.disabled = false }
 }
 
 async function markiereIrrelevant(id) {
@@ -2298,13 +2340,14 @@ async function markiereIrrelevant(id) {
     await sbPatchStation(id, { irrelevant: true, irrelevant_grund: notiz ? grund+': '+notiz : grund })
     await loadStationen()
     const fresh = stationen.find(x => x.id === id)
-    if (fresh) openDetail(id)
+    if (fresh) openDetail(id); else closeDetail()
   } catch(e) { alert('Fehler: '+e.message) }
 }
 
 async function reaktivieren(id) {
   try {
     await sbPatchStation(id, { irrelevant: false, irrelevant_grund: null })
+    closeDetail()
     loadStationen()
   } catch(e) { alert('Fehler: '+e.message) }
 }
@@ -2323,8 +2366,8 @@ async function loeschen(id) {
   try {
     await sb(`ladepunkte?station_id=eq.${id}`, { method:'DELETE', prefer:'return=minimal' })
     await sb(`stationen?id=eq.${id}`, { method:'DELETE', prefer:'return=minimal' })
+    closeDetail()
     await loadStationen()
-    openDetail(id)
   } catch(e) { alert('Fehler: '+e.message) }
 }
 
