@@ -2044,8 +2044,9 @@ function cardHTML(s, inGruppe) {
         <span style="font-weight:500;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.kundenname||s.bezeichnung||'–'}</span>
         ${tb}
       </div>
-      <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
-        ${tags}${routerSym}${simSym}${loesenBtn}
+      <div style="display:flex;align-items:center;gap:4px;flex:0 1 auto;max-width:55%;min-width:0;justify-content:flex-end">
+        <div class="evse-tags" style="justify-content:flex-end;min-width:0">${tags}</div>
+        <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">${routerSym}${simSym}${loesenBtn}</div>
       </div>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:3px;gap:8px">
@@ -2475,15 +2476,18 @@ function parse(raw) {
       const bez = t[3]&&t[3]!=='-'?t[3]:null
       const kunde = t[3]&&t[3]!=='-'?t[3]:null
       const standort = t[4]&&t[4]!=='-'?t[4]:null
-      let mel='', prio=null, j=i+1
+      let mel='', prio=null, aktiv=false, j=i+1
       while (j<lines.length&&j<i+6) {
         const nl=lines[j].trim()
         if (nl==='Offline'||nl==='Nicht verfügbar'||nl==='Nicht verfuegbar'){mel='offline';j++;continue}
         if (nl==='Störung'||nl==='Stoerung'){mel='stoerung';j++;continue}
+        if (nl==='Aktiv'){aktiv=true;j++;continue}
         if (PRIO.includes(nl)){prio=nl;j++;continue}
         if (nl===''){j++;continue}
         break
       }
+      // Status "Aktiv", aber Fehlerstufe "Wichtig" -> als Störung übernehmen
+      if (!mel && aktiv && prio==='Wichtig') mel='stoerung'
       if (mel) eintraege.push({interne_id:id,bezeichnung:bez,kundenname:kunde,standort:standort,meldungstyp:mel,evse_id:evse,prioritaet:prio})
       i=j
     } else { i++ }
