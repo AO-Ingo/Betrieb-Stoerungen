@@ -2476,18 +2476,17 @@ function parse(raw) {
       const bez = t[3]&&t[3]!=='-'?t[3]:null
       const kunde = t[3]&&t[3]!=='-'?t[3]:null
       const standort = t[4]&&t[4]!=='-'?t[4]:null
-      let mel='', prio=null, aktiv=false, j=i+1
+      let mel='', prio=null, j=i+1
       while (j<lines.length&&j<i+6) {
         const nl=lines[j].trim()
+        if (nl.includes('\t')) break  // nächste Station beginnt
         if (nl==='Offline'||nl==='Nicht verfügbar'||nl==='Nicht verfuegbar'){mel='offline';j++;continue}
-        if (nl==='Störung'||nl==='Stoerung'){mel='stoerung';j++;continue}
-        if (nl==='Aktiv'){aktiv=true;j++;continue}
+        if (nl==='Störung'||nl==='Stoerung'){if(mel!=='offline')mel='stoerung';j++;continue}
         if (PRIO.includes(nl)){prio=nl;j++;continue}
-        if (nl===''){j++;continue}
-        break
+        j++  // sonstige Statuszeile (z.B. "Aktiv") überspringen
       }
-      // Status "Aktiv", aber Fehlerstufe "Wichtig" -> als Störung übernehmen
-      if (!mel && aktiv && prio==='Wichtig') mel='stoerung'
+      // Nur der Schweregrad zählt: alles außer "Fehlerfrei" muss rein. Offline hat Vorrang vor Störung.
+      if (!mel && prio && prio!=='Fehlerfrei') mel='stoerung'
       if (mel) eintraege.push({interne_id:id,bezeichnung:bez,kundenname:kunde,standort:standort,meldungstyp:mel,evse_id:evse,prioritaet:prio})
       i=j
     } else { i++ }
