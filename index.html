@@ -1832,7 +1832,7 @@ function gruppenBlockHTML(key, gruppierte) {
     : ''
 
   return `<div class="gruppe">
-        <div class="card${grpFarbe}${gruppierte.every(s=>selectedCards.has(s.id))?' checked':''}" onclick="toggleGruppe('${gruppeId}')" style="cursor:pointer;margin-bottom:4px;padding-bottom:6px">
+        <div class="card${grpFarbe}${gruppierte.every(s=>selectedCards.has(s.id))?' checked':''}" onclick="klickGruppe('${gruppeId}')" style="cursor:pointer;margin-bottom:4px;padding-bottom:6px">
           <input type="checkbox" class="card-checkbox" title="Alle Stationen dieser Gruppe auswählen" onclick="event.stopPropagation();toggleGruppeAuswahl('${grpKey}')" ${gruppierte.every(s=>selectedCards.has(s.id))?'checked':''}>
           <div style="display:flex;align-items:center;gap:6px;justify-content:space-between">
             <div style="display:flex;align-items:center;gap:6px;min-width:0;flex:1;overflow:hidden">
@@ -1940,6 +1940,17 @@ function renderList() {
   }
 
   document.getElementById('list').innerHTML = html
+}
+
+// Klick auf Gruppenkopf: Gruppe auf-/zuklappen und Detail-Panel schließen,
+// wenn dort eine Station angezeigt wird, die nicht zu dieser Gruppe gehört
+function klickGruppe(id) {
+  if (currentStation) {
+    const grp = document.getElementById(id)
+    const gehoertDazu = grp && grp.querySelector('#card-' + CSS.escape(currentStation.id))
+    if (!gehoertDazu) closeDetail()
+  }
+  toggleGruppe(id)
 }
 
 function toggleGruppe(id) {
