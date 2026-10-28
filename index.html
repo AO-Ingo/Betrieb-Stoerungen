@@ -553,7 +553,7 @@ window.msalLogin = async function() {
 
 const SB_URL = 'https://wqnadjsuhaqqbmlagqgv.supabase.co'
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxbmFkanN1aGFxcWJtbGFncWd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2OTc4MDMsImV4cCI6MjA5ODI3MzgwM30.5gB9Uwuwrw2mlp3b2NAI8Lab7Sj_dB83uC-A7sSs_UI'
-const GRUENDE = ['Keine Betreuung','Veraltet','Warten auf Kunden','Noch nicht in Betrieb','Anderer Grund']
+const GRUENDE = ['Keine Betreuung','Veraltet','(Noch) Nicht in Betrieb','Anderer Grund']
 
 let tab = 'offline', stationen = [], parsed = []
 const H = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' }
@@ -1503,7 +1503,7 @@ async function ausgewaehltErledigt() {
   document.querySelectorAll('.app-overlay').forEach(el=>el.remove())  // vorherige Overlays aufräumen (verhindert haengende Fenster bei Doppelklick)
   const overlay = document.createElement('div')
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center'; overlay.className = 'app-overlay'
-  const optionsHtml = ['Neustart über Dashboard/Partnerportal','Neustart stromlos','Neustart RMS','Router Neustart','Softwareupdate','Serviceeinsatz','Sicherung umgelegt','Planmäßig','Kein Eingriff','Sonstiges'].map(l=>`<option value="${l}">${l}</option>`).join('')
+  const optionsHtml = LOESUNGEN.map(l=>`<option value="${l}">${l}</option>`).join('')
   overlay.innerHTML = `<div style="background:#fff;border-radius:10px;padding:20px;min-width:300px;box-shadow:0 8px 30px rgba(0,0,0,0.2)">
     <div style="font-size:14px;font-weight:600;margin-bottom:14px">Lösungsgrund (${selectedCards.size} Stationen)</div>
     <select id="sammel-loesung" style="width:100%;padding:7px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;margin-bottom:8px">
@@ -1538,10 +1538,34 @@ async function bestaetigeAusgewaehltErledigt() {
 }
 
 async function ausgewaehltIrrelevant() {
-  const grund = prompt('Grund für alle ausgewählten Stationen:', 'Keine Betreuung')
-  if (grund === null) return
+  document.querySelectorAll('.app-overlay').forEach(el=>el.remove())
+  const overlay = document.createElement('div')
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center'; overlay.className = 'app-overlay'
+  const optionsHtml = GRUENDE.map(g=>`<option value="${g}">${g}</option>`).join('')
+  overlay.innerHTML = `<div style="background:#fff;border-radius:10px;padding:20px;min-width:300px;box-shadow:0 8px 30px rgba(0,0,0,0.2)">
+    <div style="font-size:14px;font-weight:600;margin-bottom:14px">Grund für irrelevant (${selectedCards.size} Stationen)</div>
+    <select id="sammel-grund" style="width:100%;padding:7px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;margin-bottom:8px">
+      <option value="">– Bitte wählen –</option>${optionsHtml}
+    </select>
+    <input id="sammel-irr-notiz" placeholder="Notiz (optional)…" style="width:100%;padding:6px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;margin-bottom:8px;box-sizing:border-box">
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button onclick="this.closest('[style*=fixed]').remove()" style="padding:7px 14px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;cursor:pointer;font-size:13px">Abbrechen</button>
+      <button onclick="bestaetigeAusgewaehltIrrelevant()" style="padding:7px 14px;border:none;border-radius:8px;background:#6b7280;color:#fff;cursor:pointer;font-size:13px;font-weight:500">○ Irrelevant markieren</button>
+    </div>
+  </div>`
+  document.body.appendChild(overlay)
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove() })
+  overlay.querySelector('#sammel-grund').focus()
+}
+
+async function bestaetigeAusgewaehltIrrelevant() {
+  const overlay = document.querySelector('.app-overlay')
+  const grund = overlay?.querySelector('#sammel-grund')?.value
+  const notiz = (overlay?.querySelector('#sammel-irr-notiz')?.value || '').trim()
+  if (!grund) { alert('Bitte einen Grund wählen.'); return }
+  if (overlay) overlay.remove()
   for (const id of selectedCards) {
-    await sbPatchStation(id, { irrelevant: true, irrelevant_grund: grund||null })
+    await sbPatchStation(id, { irrelevant: true, irrelevant_grund: notiz ? grund + ': ' + notiz : grund })
   }
   selectedCards.clear()
   updateAktionsleiste()
