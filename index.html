@@ -1440,14 +1440,40 @@ const selectedCards = new Set()
 function handleCardClick(event, id) {
   if (event.target.type === 'checkbox') return
   if (event.target.closest('.mitarbeiter-badge')) return
-  if (selectedCards.size > 0) {
-    toggleCard(id)
+  if (selectedCards.size > 0 || event.shiftKey) {
+    toggleCard(id, event)
   } else {
     openDetail(id)
   }
 }
 
-function toggleCard(id) {
+// Anker für Shift-Klick-Bereichsauswahl (wie im Windows-Explorer)
+let letzteAuswahlId = null
+
+function bereichAuswaehlen(vonId, bisId) {
+  const karten = [...document.querySelectorAll('#list .card[id^="card-"]')].filter(c => c.offsetParent !== null)
+  const ids = karten.map(c => c.id.slice(5))
+  const a = ids.indexOf(vonId), b = ids.indexOf(bisId)
+  if (a < 0 || b < 0) return false
+  for (const id of ids.slice(Math.min(a, b), Math.max(a, b) + 1)) {
+    selectedCards.add(id)
+    document.getElementById('card-' + id)?.classList.add('checked')
+    const chk = document.getElementById('chk-' + id)
+    if (chk) chk.checked = true
+  }
+  return true
+}
+
+function toggleCard(id, event) {
+  if (event && event.shiftKey) {
+    window.getSelection()?.removeAllRanges()
+    if (letzteAuswahlId && letzteAuswahlId !== id && bereichAuswaehlen(letzteAuswahlId, id)) {
+      letzteAuswahlId = id
+      updateAktionsleiste()
+      return
+    }
+  }
+  letzteAuswahlId = id
   const card = document.getElementById('card-' + id)
   const chk = document.getElementById('chk-' + id)
   if (selectedCards.has(id)) {
@@ -1472,6 +1498,7 @@ function updateAktionsleiste() {
     if (btnGruppieren) btnGruppieren.style.display = selectedCards.size >= 2 ? '' : 'none'
   } else {
     bar.classList.remove('visible')
+    letzteAuswahlId = null
   }
 }
 
@@ -2072,7 +2099,7 @@ function cardHTML(s, inGruppe) {
     : ''
 
   return `<div class="card${farbklasse}${selectedCards.has(id)?' checked':''}" onclick="handleCardClick(event,'${id}')" id="card-${id}">
-    <input type="checkbox" class="card-checkbox" id="chk-${id}" onclick="event.stopPropagation();toggleCard('${id}')" ${selectedCards.has(id)?'checked':''}>
+    <input type="checkbox" class="card-checkbox" id="chk-${id}" onclick="event.stopPropagation();toggleCard('${id}', event)" ${selectedCards.has(id)?'checked':''}>
     <div style="display:flex;align-items:center;gap:6px;justify-content:space-between">
       <div style="display:flex;align-items:center;gap:6px;min-width:0;flex:1;overflow:hidden">
         <span class="badge ${badgeClass}" style="flex-shrink:0">${badgeText}</span>
