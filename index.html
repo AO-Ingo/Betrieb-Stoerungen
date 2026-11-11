@@ -2096,8 +2096,10 @@ function cardHTML(s, inGruppe) {
   // Gelb + 7 Tage vergangen = Erinnerung
   let gelbeErinnerung = ''
   if (s.hersteller) {
-    const tageOhne = herstellerTageOhneAktivitaet(s)
-    if (tageOhne >= 7) gelbeErinnerung = `<span style="font-size:11px;color:#6d28d9;font-weight:600">⏰ ${tageOhne} Tage ohne Aktivität</span>`
+    const erin = herstellerErinnerungDatum(s)
+    gelbeErinnerung = erin <= new Date()
+      ? `<span style="font-size:11px;color:#dc2626;font-weight:600">⏰ Erinnerung fällig</span>`
+      : `<span style="font-size:11px;color:#6d28d9;font-weight:600">⏰ Erinnerung ${erin.toLocaleDateString('de-DE')}</span>`
   } else if (s.prioritaet_farbe === 'gelb' && !s.erledigt && !s.irrelevant) {
     const ref = new Date(s.aktualisiert_am || s.erstellt_am)
     const diffTage = Math.floor((new Date() - ref) / (1000*60*60*24))
@@ -2158,6 +2160,25 @@ let currentStation = null
 // ===== Beim Hersteller =====
 let herstellerQuellen = new Set()
 
+function herstellerErinnerungDatum(s) {
+  if (s.hersteller_erinnerung_am) return new Date(s.hersteller_erinnerung_am)
+  return new Date(new Date(s.hersteller_seit || s.erstellt_am).getTime() + 7*86400000)
+}
+
+// wert: 'YYYY-MM-DD' aus dem Datumsfeld oder '+N' (ab heute)
+async function setzeHerstellerErinnerung(id, wert) {
+  let d
+  if (String(wert).startsWith('+')) { d = new Date(); d.setDate(d.getDate() + parseInt(wert.slice(1), 10)) }
+  else { if (!wert) return; d = new Date(wert + 'T00:00:00') }
+  d.setHours(8, 0, 0, 0)
+  try {
+    await sbPatchStation(id, { hersteller_erinnerung_am: d.toISOString() })
+    await sb('kommentare', { method: 'POST', body: JSON.stringify({ station_id: id, text: '⏰ Erinnerung auf ' + d.toLocaleDateString('de-DE') + ' gesetzt' }) })
+    await loadStationen()
+    openDetail(id)
+  } catch(e) { alert('Fehler: ' + e.message) }
+}
+
 function herstellerTageOhneAktivitaet(s) {
   const ref = new Date(s.aktualisiert_am || s.hersteller_seit || s.erstellt_am)
   return Math.floor((new Date() - ref) / 86400000)
@@ -2176,7 +2197,7 @@ async function zumHersteller(id) {
     const neu = await sb('stationen', { method: 'POST', body: JSON.stringify({
       ...felder,
       erledigt: false, irrelevant: false, loesung: null, gruppe_id: 'solo',
-      hersteller: true, hersteller_quelle_id: id, hersteller_seit: jetzt, hersteller_erinnert_am: null
+      hersteller: true, hersteller_quelle_id: id, hersteller_seit: jetzt, hersteller_erinnert_am: null, hersteller_erinnerung_am: new Date(Date.now() + 7*86400000).toISOString()
     }) })
     const nid = neu && neu[0] && neu[0].id
     if (!nid) throw new Error('Kopie konnte nicht angelegt werden')
@@ -2250,12 +2271,24 @@ function openDetail(id) {
     ${s.hersteller ? (() => {
       const seit = s.hersteller_seit ? new Date(s.hersteller_seit) : new Date(s.erstellt_am)
       const tageSeit = Math.floor((new Date() - seit) / 86400000)
-      const tageOhne = herstellerTageOhneAktivitaet(s)
+      const erin = herstellerErinnerungDatum(s)
+      const faellig = erin <= new Date()
+      const erinIso = new Date(erin.getTime() - erin.getTimezoneOffset()*60000).toISOString().split('T')[0]
+      const qb = 'font-size:11px;padding:2px 8px;border:1px solid #c4b5fd;border-radius:6px;background:#fff;color:#6d28d9;cursor:pointer'
       const letzteMail = s.hersteller_erinnert_am ? new Date(s.hersteller_erinnert_am).toLocaleDateString('de-DE') : '–'
       return `<div style="background:#f5f3ff;border-left:3px solid #7c3aed;border-radius:0 var(--radius) var(--radius) 0;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--text2);line-height:1.6">
         <div style="font-size:10px;font-weight:600;color:#6d28d9;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px">Herstellerfall</div>
         Beim Hersteller seit: <b>${seit.toLocaleDateString('de-DE')}</b> (${tageSeit} Tage)<br>
-        Letzte Aktivität: <b>vor ${tageOhne} Tagen</b>${tageOhne>=7?' <span style="color:#dc2626">⏰ Erinnerung fällig</span>':''}<br>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:4px 0">
+          Nächste Erinnerung:
+          <input type="date" value="${erinIso}" onchange="setzeHerstellerErinnerung('${s.id}', this.value)" style="font-size:12px;padding:2px 6px;border:1px solid #c4b5fd;border-radius:6px">
+          ${faellig ? '<span style="color:#dc2626;font-weight:600">⏰ fällig</span>' : `<span style="color:var(--text3)">(in ${Math.ceil((erin - new Date())/86400000)} Tagen)</span>`}
+        </div>
+        <div style="display:flex;gap:4px;margin-bottom:4px">
+          <button style="${qb}" onclick="setzeHerstellerErinnerung('${s.id}', '+3')">+3 Tage</button>
+          <button style="${qb}" onclick="setzeHerstellerErinnerung('${s.id}', '+7')">+7 Tage</button>
+          <button style="${qb}" onclick="setzeHerstellerErinnerung('${s.id}', '+14')">+14 Tage</button>
+        </div>
         Letzte Erinnerungsmail: ${letzteMail}<br>
         <span style="color:var(--text3)">Kartenbesitzer: ${s.mitarbeiter||'– (keine Erinnerung ohne Besitzer)'}</span>
       </div>`
