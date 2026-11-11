@@ -346,6 +346,10 @@ textarea.raw { width: 100%; height: 200px; font-family: 'DM Mono', monospace; fo
     <button class="nav-item" id="nav-irr-stoerung" onclick="setTab('irr-stoerung')">
       <span class="nav-icon">○</span><span class="nav-label">Störung irrelevant</span><span class="nav-count" id="cnt-irr-stoerung">0</span>
     </button>
+    <div class="nav-section">Hersteller</div>
+    <button class="nav-item" id="nav-hersteller" onclick="setTab('hersteller')">
+      <span class="nav-icon">🏭</span><span class="nav-label">Beim Hersteller</span><span class="nav-count" id="cnt-hersteller">0</span>
+    </button>
     <div class="nav-section">Auswertung</div>
     <button class="nav-item" id="nav-statistik" onclick="setTab('statistik')">
       <span class="nav-icon">📊</span><span class="nav-label">Statistik</span>
@@ -605,7 +609,7 @@ async function sucheAlleTabs() {
 
   try {
     const alle = await sb('stationen?select=*,ladepunkte(*)&order=erstellt_am.desc') || []
-    const treffer = alle.filter(s =>
+    const treffer = alle.filter(s => !(s.hersteller && s.erledigt)).filter(s =>
       [s.kundenname, s.interne_id, s.standort, s.bezeichnung].some(v => (v||'').toLowerCase().includes(q)) ||
       (s.ladepunkte||[]).some(lp => (lp.evse_id||'').toLowerCase().includes(q))
     )
@@ -619,6 +623,7 @@ async function sucheAlleTabs() {
     treffer.sort((a,b) => (farbOrder[a.prioritaet_farbe]??3) - (farbOrder[b.prioritaet_farbe]??3))
 
     const tabLabel = s => {
+      if (s.hersteller) return '🏭 Beim Hersteller'
       if (s.erledigt) return s.meldungstyp==='offline' ? '✓ Offline erledigt' : '✓ Störung erledigt'
       if (s.irrelevant) return s.meldungstyp==='offline' ? '○ Offline irrelevant' : '○ Störung irrelevant'
       return s.meldungstyp==='offline' ? '⚡ Offline' : '⚠ Störung'
@@ -630,7 +635,8 @@ async function sucheAlleTabs() {
         <button class="btn btn-secondary btn-sm" style="margin-left:8px" onclick="document.getElementById('search-all').value='';sucheAlleTabs()">✕ Schließen</button>
       </div>
       ${treffer.map(s => {
-        const tabKey = s.erledigt
+        const tabKey = s.hersteller ? 'hersteller'
+          : s.erledigt
           ? (s.meldungstyp==='offline' ? 'erl-offline' : 'erl-stoerung')
           : s.irrelevant
           ? (s.meldungstyp==='offline' ? 'irr-offline' : 'irr-stoerung')
@@ -680,7 +686,7 @@ async function ladeStatistik() {
   document.getElementById('list').innerHTML = '<p style="color:#999;padding:20px">Lade Statistik…</p>'
   document.getElementById('detail-panel').classList.remove('open')
   try {
-    const alle = await sb('stationen?select=id,meldungstyp,irrelevant,erledigt,loesung,kundenname,standort,interne_id,erstellt_am,ladepunkte(id,evse_id)') || []
+    const alle = await sb('stationen?hersteller=eq.false&select=id,meldungstyp,irrelevant,erledigt,loesung,kundenname,standort,interne_id,erstellt_am,ladepunkte(id,evse_id)') || []
     const aktiv = alle.filter(s=>!s.irrelevant&&!s.erledigt)
     const aktiv_off = aktiv.filter(s=>s.meldungstyp==='offline')
     const aktiv_st = aktiv.filter(s=>s.meldungstyp==='stoerung')
@@ -1440,7 +1446,7 @@ const selectedCards = new Set()
 function handleCardClick(event, id) {
   if (event.target.type === 'checkbox') return
   if (event.target.closest('.mitarbeiter-badge')) return
-  if (selectedCards.size > 0 || event.shiftKey) {
+  if (tab !== 'hersteller' && (selectedCards.size > 0 || event.shiftKey)) {
     toggleCard(id, event)
   } else {
     openDetail(id)
@@ -1806,13 +1812,21 @@ async function loadStationen() {
   document.getElementById('list').innerHTML = '<p style="color:#999;padding:20px">Lade…</p>'
   try {
     let q
-    if (tab === 'offline')       q = 'stationen?meldungstyp=eq.offline&irrelevant=eq.false&erledigt=eq.false&select=*,ladepunkte(*),kommentare(*)&order=erstellt_am.desc'
-    else if (tab === 'stoerung') q = 'stationen?meldungstyp=eq.stoerung&irrelevant=eq.false&erledigt=eq.false&select=*,ladepunkte(*),kommentare(*)&order=erstellt_am.desc'
-    else if (tab === 'erl-offline')   q = 'stationen?meldungstyp=eq.offline&erledigt=eq.true&select=*,ladepunkte(*),kommentare(*)&order=erstellt_am.desc'
-    else if (tab === 'erl-stoerung')  q = 'stationen?meldungstyp=eq.stoerung&erledigt=eq.true&select=*,ladepunkte(*),kommentare(*)&order=erstellt_am.desc'
-    else if (tab === 'irr-offline')   q = 'stationen?meldungstyp=eq.offline&irrelevant=eq.true&erledigt=eq.false&select=*,ladepunkte(*),kommentare(*)&order=erstellt_am.desc'
-    else                              q = 'stationen?meldungstyp=eq.stoerung&irrelevant=eq.true&erledigt=eq.false&select=*,ladepunkte(*)&order=erstellt_am.desc'
+    if (tab === 'offline')       q = 'stationen?hersteller=eq.false&meldungstyp=eq.offline&irrelevant=eq.false&erledigt=eq.false&select=*,ladepunkte(*),kommentare(*)&order=erstellt_am.desc'
+    else if (tab === 'stoerung') q = 'stationen?hersteller=eq.false&meldungstyp=eq.stoerung&irrelevant=eq.false&erledigt=eq.false&select=*,ladepunkte(*),kommentare(*)&order=erstellt_am.desc'
+    else if (tab === 'erl-offline')   q = 'stationen?hersteller=eq.false&meldungstyp=eq.offline&erledigt=eq.true&select=*,ladepunkte(*),kommentare(*)&order=erstellt_am.desc'
+    else if (tab === 'erl-stoerung')  q = 'stationen?hersteller=eq.false&meldungstyp=eq.stoerung&erledigt=eq.true&select=*,ladepunkte(*),kommentare(*)&order=erstellt_am.desc'
+    else if (tab === 'irr-offline')   q = 'stationen?hersteller=eq.false&meldungstyp=eq.offline&irrelevant=eq.true&erledigt=eq.false&select=*,ladepunkte(*),kommentare(*)&order=erstellt_am.desc'
+    else if (tab === 'hersteller')    q = 'stationen?hersteller=eq.true&erledigt=eq.false&select=*,ladepunkte(*),kommentare(*)&order=erstellt_am.desc'
+    else                              q = 'stationen?hersteller=eq.false&meldungstyp=eq.stoerung&irrelevant=eq.true&erledigt=eq.false&select=*,ladepunkte(*)&order=erstellt_am.desc'
     stationen = await sb(q) || []
+    // Welche aktiven Stationen haben bereits einen offenen Herstellerfall? (für Badge + Doppelanlage-Schutz)
+    if (tab === 'offline' || tab === 'stoerung') {
+      try {
+        const hf = await sb('stationen?hersteller=eq.true&erledigt=eq.false&select=hersteller_quelle_id') || []
+        herstellerQuellen = new Set(hf.map(x => x.hersteller_quelle_id).filter(Boolean))
+      } catch(e) { herstellerQuellen = new Set() }
+    }
     await ladeGruppenKommentare()
     await updateCounts()
     renderList()
@@ -1823,7 +1837,10 @@ async function loadStationen() {
 
 async function updateCounts() {
   try {
-    const all = await sb('stationen?select=id,meldungstyp,irrelevant,erledigt') || []
+    const roh = await sb('stationen?select=id,meldungstyp,irrelevant,erledigt,hersteller') || []
+    const all = roh.filter(s=>!s.hersteller)
+    const cntH = document.getElementById('cnt-hersteller')
+    if (cntH) cntH.textContent = roh.filter(s=>s.hersteller&&!s.erledigt).length
     document.getElementById('cnt-offline').textContent      = all.filter(s=>s.meldungstyp==='offline'&&!s.irrelevant&&!s.erledigt).length
     document.getElementById('cnt-stoerung').textContent     = all.filter(s=>s.meldungstyp==='stoerung'&&!s.irrelevant&&!s.erledigt).length
     document.getElementById('cnt-erl-offline').textContent  = all.filter(s=>s.meldungstyp==='offline'&&s.erledigt).length
@@ -1833,7 +1850,7 @@ async function updateCounts() {
   } catch(e) {}
 }
 
-const TAB_LABELS = { 'offline':'Offline','stoerung':'Störung','erl-offline':'Offline erledigt','erl-stoerung':'Störung erledigt','irr-offline':'Offline irrelevant','irr-stoerung':'Störung irrelevant','statistik':'Statistik' }
+const TAB_LABELS = { 'offline':'Offline','stoerung':'Störung','erl-offline':'Offline erledigt','erl-stoerung':'Störung erledigt','irr-offline':'Offline irrelevant','irr-stoerung':'Störung irrelevant','hersteller':'Beim Hersteller','statistik':'Statistik' }
 const LOESUNGEN = ['Neustart über Dashboard/Partnerportal', 'Neustart stromlos', 'Neustart RMS', 'Router Neustart', 'Softwareupdate', 'Serviceeinsatz', 'Sicherung umgelegt', 'Planmäßig', 'Kein Eingriff', 'Sonstiges']
 
 function setTab(t) {
@@ -1935,6 +1952,9 @@ function renderList() {
 
   const entries = []
 
+  if (tab === 'hersteller') {
+    for (const s of f) entries.push({ type: 'solo', station: s })
+  } else {
   // 1. Solo-Karten raustrennen, manuelle Gruppen (echte gruppe_id-UUID) unabhängig von Dashboard/Standort bilden
   const manualGroups = new Map()
   const rest = []
@@ -1962,6 +1982,7 @@ function renderList() {
   for (const [key, karten] of gruppenMap) {
     if (karten.length === 1) entries.push({ type: 'solo', station: karten[0] })
     else entries.push({ type: 'gruppe', key, karten })
+  }
   }
 
   // Sortier-Hilfswerte je Eintrag (Gruppen zählen mit ihrem stärksten/neuesten Wert)
@@ -2044,6 +2065,9 @@ function cardHTML(s, inGruppe) {
   const farbklasse = s.prioritaet_farbe ? ' '+s.prioritaet_farbe : ''
   const badgeClass = isErl ? 'badge-erl' : isIrr ? 'badge-irr' : s.meldungstyp==='offline' ? 'badge-offline' : 'badge-stoerung'
   const badgeText = s.meldungstyp==='offline' ? '⚡ Offline' : '⚠ Störung'
+  const herstellerBadge = s.hersteller
+    ? `<span class="badge" style="flex-shrink:0;background:#ede9fe;color:#6d28d9">🏭 Hersteller</span>`
+    : (herstellerQuellen.has(id) ? `<span class="badge" title="Offener Fall beim Hersteller" style="flex-shrink:0;background:#ede9fe;color:#6d28d9">🏭</span>` : '')
   const tb = s.zoho_ticket_id
     ? s.zoho_ticket_url
       ? `<a href="${s.zoho_ticket_url}" target="_blank" onclick="event.stopPropagation()" class="badge badge-ticket" style="text-decoration:none">🎫 #${s.zoho_ticket_id}</a>`
@@ -2071,7 +2095,10 @@ function cardHTML(s, inGruppe) {
 
   // Gelb + 7 Tage vergangen = Erinnerung
   let gelbeErinnerung = ''
-  if (s.prioritaet_farbe === 'gelb' && !s.erledigt && !s.irrelevant) {
+  if (s.hersteller) {
+    const tageOhne = herstellerTageOhneAktivitaet(s)
+    if (tageOhne >= 7) gelbeErinnerung = `<span style="font-size:11px;color:#6d28d9;font-weight:600">⏰ ${tageOhne} Tage ohne Aktivität</span>`
+  } else if (s.prioritaet_farbe === 'gelb' && !s.erledigt && !s.irrelevant) {
     const ref = new Date(s.aktualisiert_am || s.erstellt_am)
     const diffTage = Math.floor((new Date() - ref) / (1000*60*60*24))
     if (diffTage >= 7) {
@@ -2099,10 +2126,11 @@ function cardHTML(s, inGruppe) {
     : ''
 
   return `<div class="card${farbklasse}${selectedCards.has(id)?' checked':''}" onclick="handleCardClick(event,'${id}')" id="card-${id}">
-    <input type="checkbox" class="card-checkbox" id="chk-${id}" onclick="event.stopPropagation();toggleCard('${id}', event)" ${selectedCards.has(id)?'checked':''}>
+    ${s.hersteller ? '' : `<input type="checkbox" class="card-checkbox" id="chk-${id}" onclick="event.stopPropagation();toggleCard('${id}', event)" ${selectedCards.has(id)?'checked':''}>`}
     <div style="display:flex;align-items:center;gap:6px;justify-content:space-between">
       <div style="display:flex;align-items:center;gap:6px;min-width:0;flex:1;overflow:hidden">
         <span class="badge ${badgeClass}" style="flex-shrink:0">${badgeText}</span>
+        ${herstellerBadge}
         <span style="font-weight:500;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.kundenname||s.bezeichnung||'–'}</span>
         ${tb}
       </div>
@@ -2126,6 +2154,53 @@ function cardHTML(s, inGruppe) {
 
 
 let currentStation = null
+
+// ===== Beim Hersteller =====
+let herstellerQuellen = new Set()
+
+function herstellerTageOhneAktivitaet(s) {
+  const ref = new Date(s.aktualisiert_am || s.hersteller_seit || s.erstellt_am)
+  return Math.floor((new Date() - ref) / 86400000)
+}
+
+async function zumHersteller(id) {
+  const s = stationen.find(x => x.id === id)
+  if (!s) return
+  if (!confirm(`„${s.kundenname || s.bezeichnung || s.interne_id}" (${s.interne_id}) als Fall beim Hersteller anlegen?\n\nDer Eintrag wird in den Reiter „Beim Hersteller" kopiert. Das Original bleibt unverändert bestehen.`)) return
+  try {
+    const offen = await sb(`stationen?hersteller=eq.true&erledigt=eq.false&hersteller_quelle_id=eq.${id}&select=id`)
+    if (offen && offen.length) { alert('Für diese Station gibt es bereits einen offenen Herstellerfall.'); return }
+    // Alle Felder übernehmen, außer IDs/Zeitstempeln/Relationen und Status-Feldern
+    const { id: _id, ladepunkte, kommentare, erstellt_am, aktualisiert_am, erledigt, irrelevant, irrelevant_grund, loesung, gruppe_id, ...felder } = s
+    const jetzt = new Date().toISOString()
+    const neu = await sb('stationen', { method: 'POST', body: JSON.stringify({
+      ...felder,
+      erledigt: false, irrelevant: false, loesung: null, gruppe_id: 'solo',
+      hersteller: true, hersteller_quelle_id: id, hersteller_seit: jetzt, hersteller_erinnert_am: null
+    }) })
+    const nid = neu && neu[0] && neu[0].id
+    if (!nid) throw new Error('Kopie konnte nicht angelegt werden')
+    for (const lp of (ladepunkte || [])) {
+      await sb('ladepunkte', { method: 'POST', body: JSON.stringify({ station_id: nid, evse_id: lp.evse_id, prioritaet: lp.prioritaet }) })
+    }
+    for (const k of (kommentare || []).slice().sort((a,b)=>new Date(a.erstellt_am)-new Date(b.erstellt_am))) {
+      await sb('kommentare', { method: 'POST', body: JSON.stringify({ station_id: nid, text: k.text, erstellt_am: k.erstellt_am }) })
+    }
+    await sb('kommentare', { method: 'POST', body: JSON.stringify({ station_id: nid, text: '🏭 Fall an Hersteller übergeben (aus ' + (s.meldungstyp==='offline'?'Offline':'Störung') + ')' }) })
+    closeDetail()
+    await loadStationen()
+    alert('Herstellerfall angelegt. Du findest ihn im Reiter „Beim Hersteller".')
+  } catch(e) { alert('Fehler: ' + e.message) }
+}
+
+async function herstellerAbschliessen(id) {
+  if (!confirm('Herstellerfall abschließen? Er verschwindet dann aus dem Reiter „Beim Hersteller" und es gehen keine Erinnerungen mehr raus.')) return
+  try {
+    await sbPatchStation(id, { erledigt: true })
+    closeDetail()
+    await loadStationen()
+  } catch(e) { alert('Fehler: ' + e.message) }
+}
 
 function openDetail(id) {
   const s = stationen.find(x => x.id === id)
@@ -2151,7 +2226,9 @@ function openDetail(id) {
   const tlink = s.zoho_ticket_url ? `<a href="${s.zoho_ticket_url}" target="_blank" style="color:var(--orange);font-size:13px">🔗 Zoho Ticket öffnen</a>` : ''
   const datum = new Date(s.erstellt_am).toLocaleDateString('de-DE')
 
-  const statusBadge = isErl
+  const statusBadge = s.hersteller
+    ? `<span class="badge" style="background:#ede9fe;color:#6d28d9">🏭 Beim Hersteller</span> <span class="badge ${s.meldungstyp==='offline'?'badge-offline':'badge-stoerung'}">${s.meldungstyp==='offline'?'⚡ Offline':'⚠ Störung'}</span>`
+    : isErl
     ? `<span class="badge badge-erl">✓ Erledigt</span>`
     : isIrr ? `<span class="badge badge-irr">○ Irrelevant</span>`
     : s.meldungstyp==='offline' ? `<span class="badge badge-offline">⚡ Offline</span>`
@@ -2169,6 +2246,20 @@ function openDetail(id) {
       <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:6px">${s.interne_id}</div>
       <div class="evse-tags">${tags||'–'}</div>
     </div>
+
+    ${s.hersteller ? (() => {
+      const seit = s.hersteller_seit ? new Date(s.hersteller_seit) : new Date(s.erstellt_am)
+      const tageSeit = Math.floor((new Date() - seit) / 86400000)
+      const tageOhne = herstellerTageOhneAktivitaet(s)
+      const letzteMail = s.hersteller_erinnert_am ? new Date(s.hersteller_erinnert_am).toLocaleDateString('de-DE') : '–'
+      return `<div style="background:#f5f3ff;border-left:3px solid #7c3aed;border-radius:0 var(--radius) var(--radius) 0;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--text2);line-height:1.6">
+        <div style="font-size:10px;font-weight:600;color:#6d28d9;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px">Herstellerfall</div>
+        Beim Hersteller seit: <b>${seit.toLocaleDateString('de-DE')}</b> (${tageSeit} Tage)<br>
+        Letzte Aktivität: <b>vor ${tageOhne} Tagen</b>${tageOhne>=7?' <span style="color:#dc2626">⏰ Erinnerung fällig</span>':''}<br>
+        Letzte Erinnerungsmail: ${letzteMail}<br>
+        <span style="color:var(--text3)">Kartenbesitzer: ${s.mitarbeiter||'– (keine Erinnerung ohne Besitzer)'}</span>
+      </div>`
+    })() : ''}
 
     <!-- Betrieb -->
     <div style="border-top:1px solid var(--border);padding-top:12px;margin-bottom:12px">
@@ -2314,9 +2405,20 @@ function openDetail(id) {
 
   // Footer
   let footer = `<button class="btn btn-secondary btn-sm" onclick="toggleEditSection()">✏ Bearbeiten</button>`
+  if (s.hersteller) {
+    if (!isErl) footer += `<button class="btn btn-success btn-sm" onclick="herstellerAbschliessen('${s.id}')">✓ Herstellerfall abschließen</button>`
+    footer += `<button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="loeschen('${s.id}')">🗑</button>`
+    document.getElementById('dp-footer').innerHTML = footer
+    document.getElementById('detail-panel').classList.add('open')
+    setTimeout(() => { const el = document.getElementById('dp-edit-section'); if (el) el.style.display = 'none' }, 0)
+    return
+  }
   if (isAktiv) {
     footer += `<button class="btn btn-success btn-sm" onclick="oeffneErledigtDialog('${s.id}')">✓ Erledigt</button>`
     footer += `<button class="btn btn-danger btn-sm" onclick="oeffneIrrelevantDialog('${s.id}')">✕ Irrelevant</button>`
+    footer += herstellerQuellen.has(s.id)
+      ? `<button class="btn btn-sm btn-secondary" onclick="setTab('hersteller')" title="Es gibt bereits einen offenen Fall beim Hersteller">🏭 Zum Herstellerfall</button>`
+      : `<button class="btn btn-sm" style="background:#7c3aed;color:#fff" onclick="zumHersteller('${s.id}')">🏭 Beim Hersteller</button>`
   }
   if (isIrr) footer += `<button class="btn btn-success btn-sm" onclick="reaktivieren('${s.id}')">↩ Reaktivieren</button>`
   if (isErl) footer += `<button class="btn btn-success btn-sm" onclick="reaktivierenAusErledigt('${s.id}')">↩ Reaktivieren</button>`
@@ -2461,6 +2563,7 @@ async function loeschen(id) {
   if (!confirm('Station wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) return
   try {
     await sb(`ladepunkte?station_id=eq.${id}`, { method:'DELETE', prefer:'return=minimal' })
+    await sb(`kommentare?station_id=eq.${id}`, { method:'DELETE', prefer:'return=minimal' })
     await sb(`stationen?id=eq.${id}`, { method:'DELETE', prefer:'return=minimal' })
     closeDetail()
     await loadStationen()
@@ -2596,7 +2699,7 @@ async function doImport() {
     try {
       // Nur gegen aktive + irrelevante prüfen, NICHT gegen erledigte
       const bezFilter = s.bezeichnung ? `&bezeichnung=eq.${encodeURIComponent(s.bezeichnung)}` : '&bezeichnung=is.null'
-      const ex = await sb(`stationen?interne_id=eq.${encodeURIComponent(s.interne_id)}${bezFilter}&erledigt=eq.false&select=id,meldungstyp`)
+      const ex = await sb(`stationen?interne_id=eq.${encodeURIComponent(s.interne_id)}${bezFilter}&erledigt=eq.false&hersteller=eq.false&select=id,meldungstyp`)
       if (ex&&ex.length) {
         const e=ex[0]
         if (e.meldungstyp==='stoerung'&&s.meldungstyp==='offline') await sbPatchStation(e.id, {meldungstyp:'offline', prioritaet_farbe:null})
@@ -2620,7 +2723,7 @@ async function doImport() {
   // Rückwärtsprüfung: aktive Stationen die nicht im Import sind
   let nichtMehrImport = []
   try {
-    const aktive = await sb('stationen?erledigt=eq.false&irrelevant=eq.false&select=id,interne_id,bezeichnung,kundenname,meldungstyp,standort,gruppe_id,erstellt_am,router_online,sim_online,zoho_ticket_id,zoho_ticket_url,aktualisiert_am,kommentare(*)') || []
+    const aktive = await sb('stationen?erledigt=eq.false&irrelevant=eq.false&hersteller=eq.false&select=id,interne_id,bezeichnung,kundenname,meldungstyp,standort,gruppe_id,erstellt_am,router_online,sim_online,zoho_ticket_id,zoho_ticket_url,aktualisiert_am,kommentare(*)') || []
     const importKeys = new Set(parsed.map(s => s.interne_id + '|||' + (s.bezeichnung||'__NULL__')))
     nichtMehrImport = aktive.filter(s => !importKeys.has(s.interne_id + '|||' + (s.bezeichnung||'__NULL__')))
   } catch(e) {}
@@ -2789,11 +2892,15 @@ async function handleDeepLink() {
   try {
     const params = new URLSearchParams(window.location.search)
     const zielId = params.get('station')
-    if (!zielId) return false
-    const treffer = await sb(`stationen?interne_id=eq.${encodeURIComponent(zielId)}&select=id,meldungstyp,irrelevant,erledigt`)
+    const hfallId = params.get('hfall')
+    if (!zielId && !hfallId) return false
+    const treffer = hfallId
+      ? await sb(`stationen?id=eq.${encodeURIComponent(hfallId)}&select=id,meldungstyp,irrelevant,erledigt,hersteller`)
+      : await sb(`stationen?interne_id=eq.${encodeURIComponent(zielId)}&select=id,meldungstyp,irrelevant,erledigt,hersteller`)
     if (!treffer || !treffer.length) return false
-    const s = treffer[0]
-    if (s.irrelevant && !s.erledigt) tab = s.meldungstyp === 'offline' ? 'irr-offline' : 'irr-stoerung'
+    const s = hfallId ? treffer[0] : (treffer.find(x => !x.hersteller) || treffer[0])
+    if (s.hersteller) tab = 'hersteller'
+    else if (s.irrelevant && !s.erledigt) tab = s.meldungstyp === 'offline' ? 'irr-offline' : 'irr-stoerung'
     else if (s.erledigt) tab = s.meldungstyp === 'offline' ? 'erl-offline' : 'erl-stoerung'
     else tab = s.meldungstyp === 'offline' ? 'offline' : 'stoerung'
     Object.keys(TAB_LABELS).forEach(id => {
