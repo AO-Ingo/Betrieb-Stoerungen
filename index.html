@@ -393,11 +393,11 @@ textarea.raw { width: 100%; height: 200px; font-family: 'DM Mono', monospace; fo
       <button class="btn btn-sm" style="background:#0ea5e9;color:#fff" onclick="ausgewaehltReaktivieren()">↺ Reaktivieren</button>
       <button class="btn btn-sm" id="btn-gruppieren" style="background:#e8581a;color:#fff;display:none" onclick="gruppiereAusgewaehlte()">🔗 Gruppieren</button>
       <select onchange="ausgewaehltFarbe(this.value);this.value=''" style="padding:4px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.15);color:#fff;font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer">
-        <option value="">🎨 Farbe</option>
-        <option value="rot">🔴 Rot</option>
-        <option value="gelb">🟡 Gelb</option>
-        <option value="gruen">🟢 Grün</option>
-        <option value="">– Kein Farbcode</option>
+        <option style="color:#111;background:#fff" value="">🎨 Farbe</option>
+        <option style="color:#111;background:#fff" value="rot">🔴 Rot</option>
+        <option style="color:#111;background:#fff" value="gelb">🟡 Gelb</option>
+        <option style="color:#111;background:#fff" value="gruen">🟢 Grün</option>
+        <option style="color:#111;background:#fff" value="">– Kein Farbcode</option>
       </select>
       <button class="btn btn-sm" style="background:#dc2626;color:#fff" onclick="ausgewaehltLoeschen()">🗑 Löschen</button>
     </div>
@@ -703,7 +703,7 @@ async function ladeStatistik() {
     for (const s of erledigt) {
       const lp = evseCount(s)
       const l = s.loesung || ''
-      const key = !l ? 'Keine Angabe' : (LOESUNGEN.find(k => l.startsWith(k)) || 'Sonstiges')
+      const key = !l ? 'Keine Angabe' : (loesungKategorie(l) || 'Sonstiges')
       loesungCount[key] = (loesungCount[key]||0) + lp
     }
     const loesungSorted = Object.entries(loesungCount).sort((a,b)=>b[1]-a[1])
@@ -815,6 +815,7 @@ async function ladeStatistik() {
               'Neustart RMS': '#6366f1',
               'Neustart über Dashboard/Partnerportal': '#8b5cf6',
               'Router Neustart': '#f97316',
+              'Router Neustart via SMS': '#92400e',
               'Softwareupdate': '#dc2626',
               'Serviceeinsatz': '#ec4899',
               'Sicherung umgelegt': '#eab308',
@@ -1198,11 +1199,12 @@ async function setSimOnline(stationId, value) {
 async function bearbeiteLoesung(id) {
   const s = stationen.find(x => x.id === id)
   const aktuell = s ? s.loesung||'' : ''
-  const loesungsOptionen = ['Neustart über Dashboard/Partnerportal','Neustart stromlos','Neustart RMS','Router Neustart','Softwareupdate','Serviceeinsatz','Sicherung umgelegt','Planmäßig','Kein Eingriff','Sonstiges']
+  const loesungsOptionen = LOESUNGEN
+  const vorauswahl = loesungKategorie(aktuell)
   document.querySelectorAll('.app-overlay').forEach(el=>el.remove())  // vorherige Overlays aufräumen (verhindert haengende Fenster bei Doppelklick)
   const overlay = document.createElement('div')
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center'; overlay.className = 'app-overlay'
-  const optionsHtml = loesungsOptionen.map(l=>`<option value="${l}" ${aktuell===l||aktuell.startsWith(l)?'selected':''}>${l}</option>`).join('')
+  const optionsHtml = loesungsOptionen.map(l=>`<option value="${l}" ${l===vorauswahl?'selected':''}>${l}</option>`).join('')
   overlay.innerHTML = `<div style="background:#fff;border-radius:10px;padding:20px;min-width:280px;box-shadow:0 8px 30px rgba(0,0,0,0.2)">
     <div style="font-size:13px;font-weight:600;margin-bottom:12px">Lösung bearbeiten</div>
     <select id="loesung-select" style="width:100%;padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;margin-bottom:8px">${optionsHtml}</select>
@@ -1851,7 +1853,8 @@ async function updateCounts() {
 }
 
 const TAB_LABELS = { 'offline':'Offline','stoerung':'Störung','erl-offline':'Offline erledigt','erl-stoerung':'Störung erledigt','irr-offline':'Offline irrelevant','irr-stoerung':'Störung irrelevant','hersteller':'Beim Hersteller','statistik':'Statistik' }
-const LOESUNGEN = ['Neustart über Dashboard/Partnerportal', 'Neustart stromlos', 'Neustart RMS', 'Router Neustart', 'Softwareupdate', 'Serviceeinsatz', 'Sicherung umgelegt', 'Planmäßig', 'Kein Eingriff', 'Sonstiges']
+function loesungKategorie(l) { return [...LOESUNGEN].sort((a,b)=>b.length-a.length).find(k => (l||'').startsWith(k)) }
+const LOESUNGEN = ['Neustart über Dashboard/Partnerportal', 'Neustart stromlos', 'Neustart RMS', 'Router Neustart', 'Router Neustart via SMS', 'Softwareupdate', 'Serviceeinsatz', 'Sicherung umgelegt', 'Planmäßig', 'Kein Eingriff', 'Sonstiges']
 
 function setTab(t) {
   tab = t
@@ -2846,10 +2849,11 @@ function renderRueckwaertsSchritt() {
       ${karten.length > 1 ? `<div style="margin-bottom:6px"><button class="btn btn-secondary btn-sm" onclick="rwAlleToggle()">Alle an-/abwählen</button></div>` : ''}
       ${gkHtml}
       <div style="margin-bottom:12px">${karten.map(rwStationHtml).join('')}</div>
-      <select id="rueckwaerts-loesung-aktuell" style="width:100%;padding:6px 10px;border:1px solid #fcd34d;border-radius:6px;font-size:12px;font-family:'DM Sans',sans-serif;background:#fff">
+      <select id="rueckwaerts-loesung-aktuell" onchange="document.getElementById('rueckwaerts-sonst').style.display=this.value==='Sonstiges'?'block':'none';if(this.value==='Sonstiges')document.getElementById('rueckwaerts-sonst').focus()" style="width:100%;padding:6px 10px;border:1px solid #fcd34d;border-radius:6px;font-size:12px;font-family:'DM Sans',sans-serif;background:#fff">
         <option value="">– Lösung wählen (nur für "Erledigt") –</option>
         ${LOESUNGEN.map(l => `<option value="${l}">${l}</option>`).join('')}
       </select>
+      <input id="rueckwaerts-sonst" placeholder="Was war es? (Pflicht bei Sonstiges)" style="display:none;width:100%;margin-top:6px;padding:6px 10px;border:1px solid #fcd34d;border-radius:6px;font-size:12px;font-family:'DM Sans',sans-serif;background:#fff;box-sizing:border-box">
     </div>
     <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
       <button class="btn btn-secondary btn-sm" onclick="rueckwaertsZurueck()" ${rueckwaertsIndex === 0 ? 'disabled' : ''}>← Zurück</button>
@@ -2882,7 +2886,12 @@ function rueckwaertsUeberspringen() {
 async function rueckwaertsErledigt() {
   const g = rueckwaertsQueue[rueckwaertsIndex]
   const sel = document.getElementById('rueckwaerts-loesung-aktuell')
-  const loesung = sel ? sel.value : ''
+  let loesung = sel ? sel.value : ''
+  if (loesung === 'Sonstiges') {
+    const txt = (document.getElementById('rueckwaerts-sonst')?.value || '').trim()
+    if (!txt) { alert('Bitte bei "Sonstiges" kurz beschreiben, was es war.'); return }
+    loesung = 'Sonstiges: ' + txt
+  }
   const gewaehlt = new Set([...document.querySelectorAll('.rw-check:checked')].map(cb => cb.dataset.id))
   if (!gewaehlt.size) { alert('Keine Station ausgewählt. Zum Weitergehen "Überspringen" nutzen.'); return }
   if (!loesung) { alert('Bitte einen Lösungsgrund wählen.'); return }
