@@ -2163,9 +2163,17 @@ let currentStation = null
 // ===== Beim Hersteller =====
 let herstellerQuellen = new Set()
 
+// Standard-Erinnerung: 7 Tage nach Basisdatum, 07:30 Uhr (Make-Szenario läuft um 08:00)
+function herstellerStandardErinnerung(basis) {
+  const d = new Date(basis)
+  d.setDate(d.getDate() + 7)
+  d.setHours(7, 30, 0, 0)
+  return d
+}
+
 function herstellerErinnerungDatum(s) {
   if (s.hersteller_erinnerung_am) return new Date(s.hersteller_erinnerung_am)
-  return new Date(new Date(s.hersteller_seit || s.erstellt_am).getTime() + 7*86400000)
+  return herstellerStandardErinnerung(s.hersteller_seit || s.erstellt_am)
 }
 
 // wert: 'YYYY-MM-DD' aus dem Datumsfeld oder '+N' (ab heute)
@@ -2173,7 +2181,7 @@ async function setzeHerstellerErinnerung(id, wert) {
   let d
   if (String(wert).startsWith('+')) { d = new Date(); d.setDate(d.getDate() + parseInt(wert.slice(1), 10)) }
   else { if (!wert) return; d = new Date(wert + 'T00:00:00') }
-  d.setHours(8, 0, 0, 0)
+  d.setHours(7, 30, 0, 0)
   try {
     await sbPatchStation(id, { hersteller_erinnerung_am: d.toISOString() })
     await sb('kommentare', { method: 'POST', body: JSON.stringify({ station_id: id, text: '⏰ Erinnerung auf ' + d.toLocaleDateString('de-DE') + ' gesetzt' }) })
@@ -2200,7 +2208,7 @@ async function zumHersteller(id) {
     const neu = await sb('stationen', { method: 'POST', body: JSON.stringify({
       ...felder,
       erledigt: false, irrelevant: false, loesung: null, gruppe_id: 'solo',
-      hersteller: true, hersteller_quelle_id: id, hersteller_seit: jetzt, hersteller_erinnert_am: null, hersteller_erinnerung_am: new Date(Date.now() + 7*86400000).toISOString()
+      hersteller: true, hersteller_quelle_id: id, hersteller_seit: jetzt, hersteller_erinnert_am: null, hersteller_erinnerung_am: herstellerStandardErinnerung(new Date()).toISOString()
     }) })
     const nid = neu && neu[0] && neu[0].id
     if (!nid) throw new Error('Kopie konnte nicht angelegt werden')
