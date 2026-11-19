@@ -610,7 +610,7 @@ async function sucheAlleTabs() {
   try {
     const alle = await sb('stationen?select=*,ladepunkte(*)&order=erstellt_am.desc') || []
     const treffer = alle.filter(s => !(s.hersteller && s.erledigt)).filter(s =>
-      [s.kundenname, s.interne_id, s.standort, s.bezeichnung].some(v => (v||'').toLowerCase().includes(q)) ||
+      [s.kundenname, s.interne_id, s.standort, s.bezeichnung, s.hersteller_ticket].some(v => (v||'').toLowerCase().includes(q)) ||
       (s.ladepunkte||[]).some(lp => (lp.evse_id||'').toLowerCase().includes(q))
     )
 
@@ -1950,7 +1950,7 @@ function renderList() {
   const sortMode = document.getElementById('sortierung')?.value || 'farbe'
   const farbOrder = { rot: 0, gelb: 1, gruen: 2, '': 3, null: 3, undefined: 3 }
   const f = stationen
-    .filter(s => !q || [s.kundenname,s.interne_id,s.standort,s.bezeichnung].some(v=>(v||'').toLowerCase().includes(q)) || (s.ladepunkte||[]).some(lp=>(lp.evse_id||'').toLowerCase().includes(q)))
+    .filter(s => !q || [s.kundenname,s.interne_id,s.standort,s.bezeichnung,s.hersteller_ticket].some(v=>(v||'').toLowerCase().includes(q)) || (s.ladepunkte||[]).some(lp=>(lp.evse_id||'').toLowerCase().includes(q)))
   if (!f.length) { document.getElementById('list').innerHTML = `<div class="empty"><div style="font-size:40px">○</div><div>Keine Einträge</div></div>`; return }
 
   const entries = []
@@ -2095,6 +2095,9 @@ function cardHTML(s, inGruppe) {
   const neusterK = (s.kommentare||[]).sort((a,b)=>new Date(b.erstellt_am)-new Date(a.erstellt_am))[0]
   const erledigtDatum = s.aktualisiert_am ? new Date(s.aktualisiert_am).toLocaleDateString('de-DE') : ''
   const kVorschau = s.erledigt && s.loesung ? s.loesung + (erledigtDatum ? ' · ' + erledigtDatum : '') : (neusterK ? neusterK.text : '')
+  // Herstellerfall: neuesten echten Kommentar zeigen (System-Einträge wie ⏰/🏭 überspringen)
+  const neusterEchterK = (s.kommentare||[]).filter(k => !/^(⏰|🏭)/.test(k.text||''))[0]
+  const kVorschauH = neusterEchterK ? neusterEchterK.text : ''
 
   // Gelb + 7 Tage vergangen = Erinnerung
   let gelbeErinnerung = ''
@@ -2138,6 +2141,7 @@ function cardHTML(s, inGruppe) {
         ${herstellerBadge}
         <span style="font-weight:500;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.kundenname||s.bezeichnung||'–'}</span>
         ${tb}
+        ${s.hersteller && s.hersteller_ticket ? `<span class="badge" title="Ticketnummer beim Hersteller" style="flex-shrink:0;background:#ede9fe;color:#6d28d9">🏭 #${s.hersteller_ticket}</span>` : ''}
       </div>
       <div style="display:flex;align-items:center;gap:4px;flex:0 1 auto;max-width:55%;min-width:0;justify-content:flex-end">
         <div class="evse-tags" style="justify-content:flex-end;min-width:0">${tags}</div>
@@ -2148,7 +2152,8 @@ function cardHTML(s, inGruppe) {
       <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;overflow:hidden;flex-wrap:wrap">
         ${s.standort?`<span style="font-size:11px;color:var(--text3);flex-shrink:0">📍 ${s.standort}</span>`:''}
         ${gelbeErinnerung}
-        ${!gelbeErinnerung && kVorschau?`<span style="font-size:11px;color:var(--text2);background:var(--bg2);border-left:2px solid var(--orange);padding:1px 6px;border-radius:0 3px 3px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:250px">💬 ${kVorschau}</span>`:''}
+        ${s.hersteller && kVorschauH?`<span style="font-size:11px;color:var(--text2);background:var(--bg2);border-left:2px solid #7c3aed;padding:1px 6px;border-radius:0 3px 3px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:350px">💬 ${kVorschauH}</span>`:''}
+        ${!s.hersteller && !gelbeErinnerung && kVorschau?`<span style="font-size:11px;color:var(--text2);background:var(--bg2);border-left:2px solid var(--orange);padding:1px 6px;border-radius:0 3px 3px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:250px">💬 ${kVorschau}</span>`:''}
         ${faelligHtml}
       </div>
       <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;white-space:nowrap;flex-shrink:0">${s.interne_id}</span>
@@ -2290,6 +2295,7 @@ function openDetail(id) {
       return `<div style="background:#f5f3ff;border-left:3px solid #7c3aed;border-radius:0 var(--radius) var(--radius) 0;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--text2);line-height:1.6">
         <div style="font-size:10px;font-weight:600;color:#6d28d9;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px">Herstellerfall</div>
         Beim Hersteller seit: <b>${seit.toLocaleDateString('de-DE')}</b> (${tageSeit} Tage)<br>
+        Ticketnummer beim Hersteller: <b>${s.hersteller_ticket ? '#' + s.hersteller_ticket : '–'}</b> <span style="color:var(--text3)">(über ✏ Bearbeiten pflegen)</span><br>
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:4px 0">
           Nächste Erinnerung:
           <input type="date" value="${erinIso}" onchange="setzeHerstellerErinnerung('${s.id}', this.value)" style="font-size:12px;padding:2px 6px;border:1px solid #c4b5fd;border-radius:6px">
@@ -2375,6 +2381,8 @@ function openDetail(id) {
           </div>`).join('')}
         </div>
         <button class="btn btn-secondary btn-sm" onclick="addEvseRow('${s.id}')">+ EVSE-ID hinzufügen</button>
+        ${s.hersteller ? `<div class="detail-label" style="margin-top:6px">Ticketnummer beim Hersteller</div>
+        <input id="ef-hticket-${s.id}" value="${s.hersteller_ticket||''}" placeholder="z. B. Vorgangsnummer von ABL">` : ''}
         <div class="detail-label" style="margin-top:6px">Zoho Ticket-ID</div>
         <input id="ef-tid-${s.id}" value="${s.zoho_ticket_id||''}">
         <div class="detail-label">Zoho Ticket-URL</div>
@@ -2641,7 +2649,8 @@ async function save(id) {
       faelligkeit: val('ef-date-'+id),
       prioritaet_farbe: val('ef-farbe-'+id),
       notizen: val('ef-notes-'+id),
-      mitarbeiter: val('ef-ma-'+id)
+      mitarbeiter: val('ef-ma-'+id),
+      ...(document.getElementById('ef-hticket-'+id) ? { hersteller_ticket: val('ef-hticket-'+id) } : {})
     })
 
     // Bestehende EVSE-IDs aktualisieren
